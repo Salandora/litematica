@@ -7,8 +7,8 @@
         "IMixinBlockRendererDispatcher",
         "IMixinCompiledChunk",
         "IMixinKeyBinding",
+        "IMixinItemBlockSpecial",
         "IMixinNBTTagLongArray",
-        "IMixinRenderChunk",
         "IMixinViewFrustum",
         "IMixinWorldClient",
         "MixinBlockRail",
@@ -17,8 +17,8 @@
         "MixinGuiOverlayDebug",
         "MixinMinecraft",
         "MixinNetHandlerPlayClient",
-        "MixinWorldClient",
-        "MixinWorldRenderer"
+        "MixinRenderGlobal",
+        "MixinWorldClient"
     ],
     "injectors": {
         "defaultRequire": 1

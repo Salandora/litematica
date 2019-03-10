@@ -1,6 +1,7 @@
 package fi.dy.masa.litematica.materials;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -12,17 +13,17 @@ import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement.RequiredEnabled;
 import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.util.BlockInfoListType;
-import fi.dy.masa.litematica.util.LayerMode;
-import fi.dy.masa.litematica.util.LayerRange;
-import fi.dy.masa.litematica.util.MaterialCache;
 import fi.dy.masa.litematica.util.PositionUtils;
+import fi.dy.masa.litematica.util.SchematicWorldRefresher;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.malilib.util.InventoryUtils;
 import fi.dy.masa.malilib.util.ItemType;
+import fi.dy.masa.malilib.util.LayerRange;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
@@ -33,9 +34,14 @@ public class MaterialListUtils
 {
     public static List<MaterialListEntry> createMaterialListFor(LitematicaSchematic schematic)
     {
+        return createMaterialListFor(schematic, schematic.getAreas().keySet());
+    }
+
+    public static List<MaterialListEntry> createMaterialListFor(LitematicaSchematic schematic, Collection<String> subRegions)
+    {
         Object2IntOpenHashMap<IBlockState> countsTotal = new Object2IntOpenHashMap<>();
 
-        for (String regionName : schematic.getAreas().keySet())
+        for (String regionName : subRegions)
         {
             LitematicaBlockStateContainer container = schematic.getSubRegionContainer(regionName);
 
@@ -62,7 +68,7 @@ public class MaterialListUtils
 
         Minecraft mc = Minecraft.getInstance();
 
-        return getMaterialList(countsTotal, countsTotal, mc.player);
+        return getMaterialList(countsTotal, countsTotal, new Object2IntOpenHashMap<>(), mc.player);
     }
 
     public static List<MaterialListEntry> createMaterialListFor(SchematicPlacement placement)
@@ -78,6 +84,7 @@ public class MaterialListUtils
 
         Object2IntOpenHashMap<IBlockState> countsTotal = new Object2IntOpenHashMap<>();
         Object2IntOpenHashMap<IBlockState> countsMissing = new Object2IntOpenHashMap<>();
+        Object2IntOpenHashMap<IBlockState> countsMismatch = new Object2IntOpenHashMap<>();
 
         //if (placement.getMaterialListType() == BlockInfoListType.RENDER_LAYERS)
         {
@@ -85,8 +92,7 @@ public class MaterialListUtils
 
             if (placement.getMaterialList().getMaterialListType() == BlockInfoListType.ALL)
             {
-                range = new LayerRange();
-                range.setLayerMode(LayerMode.ALL, false);
+                range = new LayerRange(SchematicWorldRefresher.INSTANCE);
             }
 
             EnumFacing.Axis axis = range.getAxis();
@@ -112,13 +118,22 @@ public class MaterialListUtils
                         for (int x = startX; x <= endX; ++x)
                         {
                             posMutable.setPos(x, y, z);
-                            IBlockState stateSchematic = worldSchematic.getBlockState(posMutable);
-                            IBlockState stateClient = worldClient.getBlockState(posMutable);
-                            countsTotal.addTo(stateSchematic, 1);
+                            IBlockState stateSchematic = worldSchematic.getBlockState(posMutable).getActualState(worldSchematic, posMutable);
 
-                            if (stateClient != stateSchematic)
+                            if (stateSchematic.getBlock() != Blocks.AIR)
                             {
-                                countsMissing.addTo(stateSchematic, 1);
+                                IBlockState stateClient = worldClient.getBlockState(posMutable).getActualState(worldClient, posMutable);
+                                countsTotal.addTo(stateSchematic, 1);
+
+                                if (stateClient.getBlock() == Blocks.AIR)
+                                {
+                                    countsMissing.addTo(stateSchematic, 1);
+                                }
+                                else if (stateClient != stateSchematic)
+                                {
+                                    countsMissing.addTo(stateSchematic, 1);
+                                    countsMismatch.addTo(stateSchematic, 1);
+                                }
                             }
                         }
                     }
@@ -126,12 +141,13 @@ public class MaterialListUtils
             }
         }
 
-        return getMaterialList(countsTotal, countsMissing, mc.player);
+        return getMaterialList(countsTotal, countsMissing, countsMismatch, mc.player);
     }
 
     private static List<MaterialListEntry> getMaterialList(
             Object2IntOpenHashMap<IBlockState> countsTotal,
             Object2IntOpenHashMap<IBlockState> countsMissing,
+            Object2IntOpenHashMap<IBlockState> countsMismatch,
             EntityPlayer player)
     {
         List<MaterialListEntry> list = new ArrayList<>();
@@ -141,16 +157,22 @@ public class MaterialListUtils
             MaterialCache cache = MaterialCache.getInstance();
             Object2IntOpenHashMap<ItemType> itemTypesTotal = new Object2IntOpenHashMap<>();
             Object2IntOpenHashMap<ItemType> itemTypesMissing = new Object2IntOpenHashMap<>();
+            Object2IntOpenHashMap<ItemType> itemTypesMismatch = new Object2IntOpenHashMap<>();
 
             convertStatesToStacks(countsTotal, itemTypesTotal, cache);
             convertStatesToStacks(countsMissing, itemTypesMissing, cache);
+            convertStatesToStacks(countsMismatch, itemTypesMismatch, cache);
 
             Object2IntOpenHashMap<ItemType> playerInvItems = InventoryUtils.getInventoryItemCounts(player.inventory);
 
             for (ItemType type : itemTypesTotal.keySet())
             {
                 int countAvailable = playerInvItems.getInt(type);
-                list.add(new MaterialListEntry(type.getStack(), itemTypesTotal.getInt(type), itemTypesMissing.getInt(type), countAvailable));
+                list.add(new MaterialListEntry(type.getStack().copy(),
+                        itemTypesTotal.getInt(type),
+                        itemTypesMissing.getInt(type),
+                        itemTypesMismatch.getInt(type),
+                        countAvailable));
             }
         }
 
@@ -165,12 +187,23 @@ public class MaterialListUtils
         // Convert from counts per IBlockState to counts per different stacks
         for (IBlockState state : blockStatesIn.keySet())
         {
-            ItemStack stack = cache.getItemForState(state);
-
-            if (stack.isEmpty() == false)
+            if (cache.requiresMultipleItems(state))
             {
-                ItemType type = new ItemType(stack, false, true);
-                itemTypesOut.addTo(type, blockStatesIn.getInt(state) * stack.getCount());
+                for (ItemStack stack : cache.getItems(state))
+                {
+                    ItemType type = new ItemType(stack, false, true);
+                    itemTypesOut.addTo(type, blockStatesIn.getInt(state) * stack.getCount());
+                }
+            }
+            else
+            {
+                ItemStack stack = cache.getItemForState(state);
+
+                if (stack.isEmpty() == false)
+                {
+                    ItemType type = new ItemType(stack, false, true);
+                    itemTypesOut.addTo(type, blockStatesIn.getInt(state) * stack.getCount());
+                }
             }
         }
     }

@@ -13,21 +13,26 @@ import fi.dy.masa.litematica.Litematica;
 import fi.dy.masa.litematica.Reference;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.gui.GuiConfigs.ConfigGuiTab;
+import fi.dy.masa.litematica.materials.MaterialCache;
 import fi.dy.masa.litematica.materials.MaterialListBase;
-import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
+import fi.dy.masa.litematica.materials.MaterialListHudRenderer;
+import fi.dy.masa.litematica.render.infohud.InfoHud;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacementManager;
+import fi.dy.masa.litematica.schematic.projects.SchematicProjectsManager;
+import fi.dy.masa.litematica.selection.AreaSelectionSimple;
 import fi.dy.masa.litematica.selection.SelectionManager;
-import fi.dy.masa.litematica.util.LayerRange;
-import fi.dy.masa.litematica.util.OperationMode;
+import fi.dy.masa.litematica.tool.ToolMode;
+import fi.dy.masa.litematica.util.SchematicWorldRefresher;
 import fi.dy.masa.malilib.gui.interfaces.IDirectoryCache;
 import fi.dy.masa.malilib.util.FileUtils;
 import fi.dy.masa.malilib.util.JsonUtils;
+import fi.dy.masa.malilib.util.LayerRange;
+import fi.dy.masa.malilib.util.StringUtils;
+import fi.dy.masa.malilib.util.WorldUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.registry.IRegistry;
 
@@ -41,17 +46,15 @@ public class DataManager implements IDirectoryCache
     private static ItemStack toolItem = new ItemStack(Items.STICK);
     private static ConfigGuiTab configGuiTab = ConfigGuiTab.GENERIC;
     private static boolean createPlacementOnLoad = true;
-
     private static boolean canSave;
-
-    @Nullable
-    private static SchematicPlacement placementToVerify = null;
     private static long clientTickStart;
 
     private final SelectionManager selectionManager = new SelectionManager();
     private final SchematicPlacementManager schematicPlacementManager = new SchematicPlacementManager();
-    private LayerRange renderRange = new LayerRange();
-    private OperationMode operationMode = OperationMode.SCHEMATIC_PLACEMENT;
+    private final SchematicProjectsManager schematicProjectsManager = new SchematicProjectsManager();
+    private LayerRange renderRange = new LayerRange(SchematicWorldRefresher.INSTANCE);
+    private ToolMode operationMode = ToolMode.SCHEMATIC_PLACEMENT;
+    private AreaSelectionSimple areaSimple = new AreaSelectionSimple(true);
     @Nullable
     private MaterialListBase materialList;
 
@@ -77,40 +80,6 @@ public class DataManager implements IDirectoryCache
     public static long getClientTickStartTime()
     {
         return clientTickStart;
-    }
-
-    public static boolean addSchematicVerificationTask(SchematicPlacement placement)
-    {
-        if (placementToVerify == null)
-        {
-            placementToVerify = placement;
-            return true;
-        }
-
-        return false;
-    }
-
-    public static void removeSchematicVerificationTask()
-    {
-        placementToVerify = null;
-    }
-
-    @Nullable
-    public static SchematicVerifier getActiveSchematicVerifier()
-    {
-        return placementToVerify != null ? placementToVerify.getSchematicVerifier() : null;
-    }
-
-    public static void runTasks()
-    {
-        getInstance().schematicPlacementManager.processQueuedChunks();
-
-        if (placementToVerify != null)
-        {
-            SchematicVerifier verifier = placementToVerify.getSchematicVerifier();
-            verifier.verifyChunks();
-            verifier.checkChangedPositions();
-        }
     }
 
     public static ItemStack getToolItem()
@@ -148,23 +117,41 @@ public class DataManager implements IDirectoryCache
         return getInstance().schematicPlacementManager;
     }
 
+    public static SchematicProjectsManager getSchematicProjectsManager()
+    {
+        return getInstance().schematicProjectsManager;
+    }
+
     @Nullable
     public static MaterialListBase getMaterialList()
     {
         return getInstance().materialList;
     }
 
-    public static void setMaterialList(MaterialListBase materialList)
+    public static void setMaterialList(@Nullable MaterialListBase materialList)
     {
+        MaterialListBase old = getInstance().materialList;
+
+        if (old != null)
+        {
+            MaterialListHudRenderer renderer = old.getHudRenderer();
+
+            if (renderer.getShouldRenderCustom())
+            {
+                renderer.toggleShouldRender();
+                InfoHud.getInstance().removeInfoHudRenderer(renderer, false);
+            }
+        }
+
         getInstance().materialList = materialList;
     }
 
-    public static OperationMode getOperationMode()
+    public static ToolMode getToolMode()
     {
         return getInstance().operationMode;
     }
 
-    public static void setOperationMode(OperationMode mode)
+    public static void setToolMode(ToolMode mode)
     {
         getInstance().operationMode = mode;
     }
@@ -172,6 +159,11 @@ public class DataManager implements IDirectoryCache
     public static LayerRange getRenderLayerRange()
     {
         return getInstance().renderRange;
+    }
+
+    public static AreaSelectionSimple getSimpleArea()
+    {
+        return getInstance().areaSimple;
     }
 
     @Override
@@ -244,6 +236,7 @@ public class DataManager implements IDirectoryCache
     public static void save()
     {
         save(false);
+        MaterialCache.getInstance().writeToFile();
     }
 
     public static void save(boolean forceSave)
@@ -276,6 +269,7 @@ public class DataManager implements IDirectoryCache
 
     private void savePerDimensionData()
     {
+        this.schematicProjectsManager.saveCurrentProject();
         JsonObject root = this.toJson();
 
         File file = getCurrentStorageFile(false);
@@ -286,6 +280,7 @@ public class DataManager implements IDirectoryCache
     {
         this.selectionManager.clear();
         this.schematicPlacementManager.clear();
+        this.schematicProjectsManager.clear();
         this.materialList = null;
 
         File file = getCurrentStorageFile(false);
@@ -310,23 +305,33 @@ public class DataManager implements IDirectoryCache
             this.schematicPlacementManager.loadFromJson(obj.get("placements").getAsJsonObject());
         }
 
+        if (JsonUtils.hasObject(obj, "schematic_projects_manager"))
+        {
+            this.schematicProjectsManager.loadFromJson(obj.get("schematic_projects_manager").getAsJsonObject());
+        }
+
         if (JsonUtils.hasObject(obj, "render_range"))
         {
-            this.renderRange = LayerRange.fromJson(JsonUtils.getNestedObject(obj, "render_range", false));
+            this.renderRange = LayerRange.createFromJson(JsonUtils.getNestedObject(obj, "render_range", false), SchematicWorldRefresher.INSTANCE);
         }
 
         if (JsonUtils.hasString(obj, "operation_mode"))
         {
             try
             {
-                this.operationMode = OperationMode.valueOf(obj.get("operation_mode").getAsString());
+                this.operationMode = ToolMode.valueOf(obj.get("operation_mode").getAsString());
             }
             catch (Exception e) {}
 
             if (this.operationMode == null)
             {
-                this.operationMode = OperationMode.AREA_SELECTION;
+                this.operationMode = ToolMode.AREA_SELECTION;
             }
+        }
+
+        if (JsonUtils.hasObject(obj, "area_simple"))
+        {
+            this.areaSimple = AreaSelectionSimple.fromJson(obj.get("area_simple").getAsJsonObject());
         }
     }
 
@@ -336,8 +341,10 @@ public class DataManager implements IDirectoryCache
 
         obj.add("selections", this.selectionManager.toJson());
         obj.add("placements", this.schematicPlacementManager.toJson());
+        obj.add("schematic_projects_manager", this.schematicProjectsManager.toJson());
         obj.add("operation_mode", new JsonPrimitive(this.operationMode.name()));
         obj.add("render_range", this.renderRange.toJson());
+        obj.add("area_simple", this.areaSimple.toJson());
 
         return obj;
     }
@@ -349,7 +356,7 @@ public class DataManager implements IDirectoryCache
 
     public static File getSchematicsBaseDirectory()
     {
-        File dir = FileUtils.getCanonicalFileIfPossible(new File(Minecraft.getInstance().gameDir, "schematics"));
+        File dir = FileUtils.getCanonicalFileIfPossible(new File(FileUtils.getMinecraftDirectory(), "schematics"));
 
         if (dir.exists() == false && dir.mkdirs() == false)
         {
@@ -386,31 +393,17 @@ public class DataManager implements IDirectoryCache
     private static String getStorageFileName(boolean globalData)
     {
         Minecraft mc = Minecraft.getInstance();
+        String name = StringUtils.getWorldOrServerName();
 
-        if (mc.world != null)
+        if (name != null)
         {
-            // TODO How to fix this for Forge custom dimensions compatibility (if the type ID is not unique)?
-            final int dimension = mc.world.dimension.getType().getId();
-
-            if (mc.isSingleplayer())
+            if (globalData)
             {
-                IntegratedServer server = mc.getIntegratedServer();
-
-                if (server != null)
-                {
-                    String nameEnd = globalData ? ".json" : "_dim" + dimension + ".json";
-                    return Reference.MOD_ID + "_" + server.getFolderName() + nameEnd;
-                }
+                return Reference.MOD_ID + "_" + name + ".json";
             }
             else
             {
-                ServerData server = mc.getCurrentServerData();
-
-                if (server != null)
-                {
-                    String nameEnd = globalData ? ".json" : "_dim" + dimension + ".json";
-                    return Reference.MOD_ID + "_" + server.serverIP.replace(':', '_') + nameEnd;
-                }
+                return Reference.MOD_ID + "_" + name + "_dim" + WorldUtils.getDimensionId(mc.world) + ".json";
             }
         }
 
@@ -419,6 +412,12 @@ public class DataManager implements IDirectoryCache
 
     public static void setToolItem(String itemName)
     {
+        if (itemName.isEmpty() || itemName.equals("empty"))
+        {
+            toolItem = ItemStack.EMPTY;
+            return;
+        }
+
         try
         {
             Matcher matcher = PATTERN_ITEM_BASE.matcher(itemName);

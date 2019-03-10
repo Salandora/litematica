@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import javax.annotation.Nullable;
 import com.google.common.collect.ImmutableMap;
 import fi.dy.masa.litematica.Litematica;
@@ -21,8 +22,10 @@ import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.util.EntityUtils;
 import fi.dy.masa.litematica.util.PositionUtils;
 import fi.dy.masa.litematica.util.WorldUtils;
+import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.interfaces.IStringConsumer;
 import fi.dy.masa.malilib.util.Constants;
+import fi.dy.masa.malilib.util.InfoUtils;
 import fi.dy.masa.malilib.util.NBTUtils;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -66,7 +69,6 @@ public class LitematicaSchematic
     private final Map<String, BlockPos> subRegionPositions = new HashMap<>();
     private final Map<String, BlockPos> subRegionSizes = new HashMap<>();
     private final SchematicMetadata metadata = new SchematicMetadata();
-    private Vec3i totalSize = BlockPos.ORIGIN;
     private int totalBlocks;
     @Nullable
     private final File schematicFile;
@@ -84,7 +86,12 @@ public class LitematicaSchematic
 
     public Vec3i getTotalSize()
     {
-        return this.totalSize;
+        return this.metadata.getEnclosingSize();
+    }
+
+    public int getTotalBlocks()
+    {
+        return this.totalBlocks;
     }
 
     public SchematicMetadata getMetadata()
@@ -129,6 +136,12 @@ public class LitematicaSchematic
         return builder.build();
     }
 
+    @Nullable
+    public BlockPos getAreaSize(String regionName)
+    {
+        return this.subRegionSizes.get(regionName);
+    }
+
     public Map<String, Box> getAreas()
     {
         ImmutableMap.Builder<String, Box> builder = ImmutableMap.builder();
@@ -158,16 +171,15 @@ public class LitematicaSchematic
         LitematicaSchematic schematic = new LitematicaSchematic(null);
         long time = (new Date()).getTime();
 
-        schematic.totalSize = PositionUtils.getEnclosingAreaSize(area);
-
-        schematic.setSubRegionPositions(boxes, area.getOrigin());
+        BlockPos origin = area.getEffectiveOrigin();
+        schematic.setSubRegionPositions(boxes, origin);
         schematic.setSubRegionSizes(boxes);
 
-        schematic.takeBlocksFromWorld(world, boxes, area.getOrigin());
+        schematic.takeBlocksFromWorld(world, boxes);
 
         if (ignoreEntities == false)
         {
-            schematic.takeEntitiesFromWorld(world, boxes, area.getOrigin());
+            schematic.takeEntitiesFromWorld(world, boxes, origin);
         }
 
         schematic.metadata.setAuthor(author);
@@ -178,6 +190,50 @@ public class LitematicaSchematic
         schematic.metadata.setTotalVolume(PositionUtils.getTotalVolume(boxes));
         schematic.metadata.setEnclosingSize(PositionUtils.getEnclosingAreaSize(boxes));
         schematic.metadata.setTotalBlocks(schematic.totalBlocks);
+
+        return schematic;
+    }
+
+    /**
+     * Creates an empty schematic with all the maps and lists and containers already created.
+     * This is intended to be used for the chunk-wise schematic creation.
+     * @param area
+     * @param author
+     * @param feedback
+     * @return
+     */
+    public static LitematicaSchematic createEmptySchematic(AreaSelection area, String author)
+    {
+        List<Box> boxes = PositionUtils.getValidBoxes(area);
+
+        if (boxes.isEmpty())
+        {
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, I18n.format("litematica.error.schematic.create.no_selections"));
+            return null;
+        }
+
+        LitematicaSchematic schematic = new LitematicaSchematic(null);
+        schematic.setSubRegionPositions(boxes, area.getEffectiveOrigin());
+        schematic.setSubRegionSizes(boxes);
+        schematic.metadata.setAuthor(author);
+        schematic.metadata.setName(area.getName());
+        schematic.metadata.setRegionCount(boxes.size());
+        schematic.metadata.setTotalVolume(PositionUtils.getTotalVolume(boxes));
+        schematic.metadata.setEnclosingSize(PositionUtils.getEnclosingAreaSize(boxes));
+
+        for (Box box : boxes)
+        {
+            String regionName = box.getName();
+            BlockPos size = box.getSize();
+            final int sizeX = Math.abs(size.getX());
+            final int sizeY = Math.abs(size.getY());
+            final int sizeZ = Math.abs(size.getZ());
+            LitematicaBlockStateContainer container = new LitematicaBlockStateContainer(sizeX, sizeY, sizeZ);
+            schematic.blockContainers.put(regionName, container);
+            schematic.tileEntities.put(regionName, new HashMap<>());
+            schematic.entities.put(regionName, new ArrayList<>());
+            schematic.pendingBlockTicks.put(regionName, new HashMap<>());
+        }
 
         return schematic;
     }
@@ -230,7 +286,7 @@ public class LitematicaSchematic
         return true;
     }
 
-    private void placeBlocksToWorld(World world, BlockPos origin, BlockPos regionPos, BlockPos regionSize,
+    private boolean placeBlocksToWorld(World world, BlockPos origin, BlockPos regionPos, BlockPos regionSize,
             SchematicPlacement schematicPlacement, SubRegionPlacement placement,
             LitematicaBlockStateContainer container, Map<BlockPos, NBTTagCompound> tileMap,
             @Nullable Map<BlockPos, NextTickListEntry<Block>> scheduledBlockTicks,
@@ -244,138 +300,129 @@ public class LitematicaSchematic
         BlockPos posEndAbs = PositionUtils.getTransformedPlacementPosition(regionSize.add(-1, -1, -1), schematicPlacement, placement).add(regionPosTransformed).add(origin);
         BlockPos regionPosAbs = regionPosTransformed.add(origin);
 
-        if (PositionUtils.arePositionsWithinWorld(world, regionPosAbs, posEndAbs))
+        if (PositionUtils.arePositionsWithinWorld(world, regionPosAbs, posEndAbs) == false)
         {
-            final int sizeX = Math.abs(regionSize.getX());
-            final int sizeY = Math.abs(regionSize.getY());
-            final int sizeZ = Math.abs(regionSize.getZ());
-            BlockPos.MutableBlockPos posMutable = new BlockPos.MutableBlockPos();
+            return false;
+        }
 
-            final Rotation rotationCombined = schematicPlacement.getRotation().add(placement.getRotation());
-            final Mirror mirrorMain = schematicPlacement.getMirror();
-            Mirror mirrorSub = placement.getMirror();
+        final int sizeX = Math.abs(regionSize.getX());
+        final int sizeY = Math.abs(regionSize.getY());
+        final int sizeZ = Math.abs(regionSize.getZ());
+        final IBlockState barrier = Blocks.BARRIER.getDefaultState();
+        BlockPos.MutableBlockPos posMutable = new BlockPos.MutableBlockPos();
 
-            if (mirrorSub != Mirror.NONE &&
-                (schematicPlacement.getRotation() == Rotation.CLOCKWISE_90 ||
-                 schematicPlacement.getRotation() == Rotation.COUNTERCLOCKWISE_90))
+        final Rotation rotationCombined = schematicPlacement.getRotation().add(placement.getRotation());
+        final Mirror mirrorMain = schematicPlacement.getMirror();
+        Mirror mirrorSub = placement.getMirror();
+
+        if (mirrorSub != Mirror.NONE &&
+            (schematicPlacement.getRotation() == Rotation.CLOCKWISE_90 ||
+             schematicPlacement.getRotation() == Rotation.COUNTERCLOCKWISE_90))
+        {
+            mirrorSub = mirrorSub == Mirror.FRONT_BACK ? Mirror.LEFT_RIGHT : Mirror.FRONT_BACK;
+        }
+
+        for (int y = 0; y < sizeY; ++y)
+        {
+            for (int z = 0; z < sizeZ; ++z)
             {
-                mirrorSub = mirrorSub == Mirror.FRONT_BACK ? Mirror.LEFT_RIGHT : Mirror.FRONT_BACK;
-            }
+                for (int x = 0; x < sizeX; ++x)
+                {
+                    IBlockState state = container.get(x, y, z);
 
+                    posMutable.setPos(x, y, z);
+                    NBTTagCompound teNBT = tileMap.get(posMutable);
+
+
+                    posMutable.setPos(  posMinRel.getX() + x - regionPos.getX(),
+                                        posMinRel.getY() + y - regionPos.getY(),
+                                        posMinRel.getZ() + z - regionPos.getZ());
+
+                    BlockPos pos = PositionUtils.getTransformedPlacementPosition(posMutable, schematicPlacement, placement);
+                    pos = pos.add(regionPosTransformed).add(origin);
+
+                    if (mirrorMain != Mirror.NONE) { state = state.withMirror(mirrorMain); }
+                    if (mirrorSub != Mirror.NONE)  { state = state.withMirror(mirrorSub); }
+                    if (rotationCombined != Rotation.NONE) { state = state.withRotation(rotationCombined); }
+
+                    if (world.getBlockState(pos).getActualState(world, pos) == state)
+                    {
+                        continue;
+                    }
+
+                    if (teNBT != null)
+                    {
+                        TileEntity te = world.getTileEntity(pos);
+
+                        if (te != null)
+                        {
+                            if (te instanceof IInventory)
+                            {
+                                ((IInventory) te).clear();
+                            }
+
+                            world.setBlockState(pos, barrier, 0x14);
+                        }
+                    }
+
+                    if (world.setBlockState(pos, state, 0x12) && teNBT != null)
+                    {
+                        TileEntity te = world.getTileEntity(pos);
+
+                        if (te != null)
+                        {
+                            teNBT = teNBT.copy();
+                            teNBT.setInteger("x", pos.getX());
+                            teNBT.setInteger("y", pos.getY());
+                            teNBT.setInteger("z", pos.getZ());
+
+                            try
+                            {
+                                te.readFromNBT(teNBT);
+
+                                if (mirrorMain != Mirror.NONE) { te.mirror(mirrorMain); }
+                                if (mirrorSub != Mirror.NONE)  { te.mirror(mirrorSub); }
+                                if (rotationCombined != Rotation.NONE) { te.rotate(rotationCombined); }
+                            }
+                            catch (Exception e)
+                            {
+                                LiteModLitematica.logger.warn("Failed to load TileEntity data for {} @ {}", state, pos);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (notifyNeighbors)
+        {
             for (int y = 0; y < sizeY; ++y)
             {
                 for (int z = 0; z < sizeZ; ++z)
                 {
                     for (int x = 0; x < sizeX; ++x)
                     {
-                        IBlockState state = container.get(x, y, z);
-
-                        if (state.getBlock() == Blocks.AIR)
-                        {
-                            continue;
-                        }
-
-                        posMutable.setPos(x, y, z);
-                        NBTTagCompound teNBT = tileMap.get(posMutable);
-
-
                         posMutable.setPos(  posMinRel.getX() + x - regionPos.getX(),
                                             posMinRel.getY() + y - regionPos.getY(),
                                             posMinRel.getZ() + z - regionPos.getZ());
-
-                        BlockPos pos = PositionUtils.getTransformedPlacementPosition(posMutable, schematicPlacement, placement);
-                        pos = pos.add(regionPosTransformed).add(origin);
-
-                        if (mirrorMain != Mirror.NONE) { state = state.mirror(mirrorMain); }
-                        if (mirrorSub != Mirror.NONE)  { state = state.mirror(mirrorSub); }
-                        if (rotationCombined != Rotation.NONE) { state = state.rotate(rotationCombined); }
-
-                        if (teNBT != null)
-                        {
-                            TileEntity te = world.getTileEntity(pos);
-
-                            if (te != null)
-                            {
-                                if (te instanceof IInventory)
-                                {
-                                    ((IInventory) te).clear();
-                                }
-
-                                world.setBlockState(pos, Blocks.BARRIER.getDefaultState(), 0x14);
-                            }
-                        }
-
-                        if (world.setBlockState(pos, state, 0x12) && teNBT != null)
-                        {
-                            TileEntity te = world.getTileEntity(pos);
-
-                            if (te != null)
-                            {
-                                teNBT.putInt("x", pos.getX());
-                                teNBT.putInt("y", pos.getY());
-                                teNBT.putInt("z", pos.getZ());
-
-                                try
-                                {
-                                    te.read(teNBT);
-
-                                    if (mirrorMain != Mirror.NONE) { te.mirror(mirrorMain); }
-                                    if (mirrorSub != Mirror.NONE)  { te.mirror(mirrorSub); }
-                                    if (rotationCombined != Rotation.NONE) { te.rotate(rotationCombined); }
-                                }
-                                catch (Exception e)
-                                {
-                                    Litematica.logger.warn("Failed to load TileEntity data for {} @ {}", state, pos);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (notifyNeighbors)
-            {
-                for (int y = 0; y < sizeY; ++y)
-                {
-                    for (int z = 0; z < sizeZ; ++z)
-                    {
-                        for (int x = 0; x < sizeX; ++x)
-                        {
-                            posMutable.setPos(  posMinRel.getX() + x - regionPos.getX(),
-                                                posMinRel.getY() + y - regionPos.getY(),
-                                                posMinRel.getZ() + z - regionPos.getZ());
-                            BlockPos pos = PositionUtils.getTransformedPlacementPosition(posMutable, schematicPlacement, placement).add(origin);
-                            world.notifyNeighbors(pos, world.getBlockState(pos).getBlock());
-                        }
-                    }
-                }
-            }
-
-            if (scheduledBlockTicks != null && scheduledBlockTicks.isEmpty() == false)
-            {
-                for (Map.Entry<BlockPos, NextTickListEntry<Block>> entry : scheduledBlockTicks.entrySet())
-                {
-                    BlockPos pos = entry.getKey().add(regionPosAbs);
-                    NextTickListEntry<Block> tick = entry.getValue();
-                    world.getPendingBlockTicks().scheduleTick(pos, world.getBlockState(pos).getBlock(), (int) tick.scheduledTime, tick.priority);
-                }
-            }
-
-            if (scheduledFluidTicks != null && scheduledFluidTicks.isEmpty() == false)
-            {
-                for (Map.Entry<BlockPos, NextTickListEntry<Fluid>> entry : scheduledFluidTicks.entrySet())
-                {
-                    BlockPos pos = entry.getKey().add(regionPosAbs);
-                    IBlockState state = world.getBlockState(pos);
-
-                    if (state.getFluidState().isEmpty() == false)
-                    {
-                        NextTickListEntry<Fluid> tick = entry.getValue();
-                        world.getPendingFluidTicks().scheduleTick(pos, state.getFluidState().getFluid(), (int) tick.scheduledTime, tick.priority);
+                        BlockPos pos = PositionUtils.getTransformedPlacementPosition(posMutable, schematicPlacement, placement).add(origin);
+                        world.notifyNeighborsRespectDebug(pos, world.getBlockState(pos).getBlock(), false);
                     }
                 }
             }
         }
+
+        if (scheduledTicks != null && scheduledTicks.isEmpty() == false)
+        {
+            for (Map.Entry<BlockPos, NextTickListEntry> entry : scheduledTicks.entrySet())
+            {
+                BlockPos pos = entry.getKey().add(regionPosAbs);
+                NextTickListEntry tick = entry.getValue();
+                world.scheduleBlockUpdate(pos, world.getBlockState(pos).getBlock(), (int) tick.scheduledTime, tick.priority);
+            }
+        }
+
+        return true;
     }
 
     private void placeEntitiesToWorld(World world, BlockPos origin, BlockPos regionPos, BlockPos regionSize, SchematicPlacement schematicPlacement, SubRegionPlacement placement, List<EntityInfo> entityList)
@@ -396,16 +443,12 @@ public class LitematicaSchematic
             mirrorSub = mirrorSub == Mirror.FRONT_BACK ? Mirror.LEFT_RIGHT : Mirror.FRONT_BACK;
         }
 
-        List<Entity> existingEntitiesInArea = EntityUtils.getEntitiesWithinSubRegion(world, origin, regionPos, regionSize, schematicPlacement, placement);
-
         for (EntityInfo info : entityList)
         {
             Entity entity = EntityUtils.createEntityAndPassengersFromNBT(info.nbt, world);
 
             if (entity != null)
             {
-                EntityUtils.handleSchematicPlacementEntityUUIDCollision(world, entity, existingEntitiesInArea);
-
                 Vec3d pos = info.posVec;
                 pos = PositionUtils.getTransformedPosition(pos, schematicPlacement.getMirror(), schematicPlacement.getRotation());
                 pos = PositionUtils.getTransformedPosition(pos, placement.getMirror(), placement.getRotation());
@@ -512,6 +555,7 @@ public class LitematicaSchematic
 
         final Rotation rotationCombined = schematicPlacement.getRotation().add(placement.getRotation());
         final Mirror mirrorMain = schematicPlacement.getMirror();
+        final IBlockState barrier = Blocks.BARRIER.getDefaultState();
         Mirror mirrorSub = placement.getMirror();
 
         if (mirrorSub != Mirror.NONE &&
@@ -559,7 +603,7 @@ public class LitematicaSchematic
                                 ((IInventory) te).clear();
                             }
 
-                            world.setBlockState(pos, Blocks.BARRIER.getDefaultState(), 0x14);
+                            world.setBlockState(pos, barrier, 0x14);
                         }
                     }
 
@@ -569,9 +613,10 @@ public class LitematicaSchematic
 
                         if (te != null)
                         {
-                            teNBT.putInt("x", pos.getX());
-                            teNBT.putInt("y", pos.getY());
-                            teNBT.putInt("z", pos.getZ());
+                            teNBT = teNBT.copy();
+                            teNBT.setInteger("x", pos.getX());
+                            teNBT.setInteger("y", pos.getY());
+                            teNBT.setInteger("z", pos.getZ());
 
                             try
                             {
@@ -633,16 +678,12 @@ public class LitematicaSchematic
             mirrorSub = mirrorSub == Mirror.FRONT_BACK ? Mirror.LEFT_RIGHT : Mirror.FRONT_BACK;
         }
 
-        List<Entity> existingEntitiesInArea = EntityUtils.getEntitiesWithinSubRegion(world, origin, regionPos, regionSize, schematicPlacement, placement);
-
         for (EntityInfo info : entityList)
         {
             Entity entity = EntityUtils.createEntityAndPassengersFromNBT(info.nbt, world);
 
             if (entity != null)
             {
-                EntityUtils.handleSchematicPlacementEntityUUIDCollision(world, entity, existingEntitiesInArea);
-
                 Vec3d pos = info.posVec;
                 pos = PositionUtils.getTransformedPosition(pos, schematicPlacement.getMirror(), schematicPlacement.getRotation());
                 pos = PositionUtils.getTransformedPosition(pos, placement.getMirror(), placement.getRotation());
@@ -708,7 +749,50 @@ public class LitematicaSchematic
         }
     }
 
-    private void takeBlocksFromWorld(World world, List<Box> boxes, BlockPos origin)
+    public void takeEntitiesFromWorldWithinChunk(World world, int chunkX, int chunkZ,
+            ImmutableMap<String, StructureBoundingBox> volumes, ImmutableMap<String, Box> boxes,
+            Set<UUID> existingEntities, BlockPos origin)
+    {
+        for (Map.Entry<String, StructureBoundingBox> entry : volumes.entrySet())
+        {
+            String regionName = entry.getKey();
+            List<EntityInfo> list = this.entities.get(regionName);
+            Box box = boxes.get(regionName);
+
+            if (box == null || list == null)
+            {
+                continue;
+            }
+
+            AxisAlignedBB bb = PositionUtils.createAABBFrom(entry.getValue());
+            List<Entity> entities = world.getEntitiesInAABBexcluding(null, bb, null);
+            BlockPos regionPosAbs = box.getPos1();
+
+            for (Entity entity : entities)
+            {
+                UUID uuid = entity.getUniqueID();
+                /*
+                if (entity.posX >= bb.minX && entity.posX < bb.maxX &&
+                    entity.posY >= bb.minY && entity.posY < bb.maxY &&
+                    entity.posZ >= bb.minZ && entity.posZ < bb.maxZ)
+                */
+                if (existingEntities.contains(uuid) == false)
+                {
+                    NBTTagCompound tag = new NBTTagCompound();
+
+                    if (entity.writeToNBTOptional(tag))
+                    {
+                        Vec3d posVec = new Vec3d(entity.posX - regionPosAbs.getX(), entity.posY - regionPosAbs.getY(), entity.posZ - regionPosAbs.getZ());
+                        NBTUtils.writeEntityPositionToTag(posVec, tag);
+                        list.add(new EntityInfo(posVec, tag));
+                        existingEntities.add(uuid);
+                    }
+                }
+            }
+        }
+    }
+
+    private void takeBlocksFromWorld(World world, List<Box> boxes)
     {
         BlockPos.MutableBlockPos posMutable = new BlockPos.MutableBlockPos(0, 0, 0);
 
@@ -813,6 +897,116 @@ public class LitematicaSchematic
         }
     }
 
+    public void takeBlocksFromWorldWithinChunk(World world, int chunkX, int chunkZ,
+            ImmutableMap<String, StructureBoundingBox> volumes, ImmutableMap<String, Box> boxes)
+    {
+        BlockPos.MutableBlockPos posMutable = new BlockPos.MutableBlockPos(0, 0, 0);
+
+        for (Map.Entry<String, StructureBoundingBox> volumeEntry : volumes.entrySet())
+        {
+            String regionName = volumeEntry.getKey();
+            StructureBoundingBox bb = volumeEntry.getValue();
+            Box box = boxes.get(regionName);
+
+            if (box == null)
+            {
+                LiteModLitematica.logger.error("null Box for sub-region '{}' while trying to save chunk-wise schematic", regionName);
+                continue;
+            }
+
+            LitematicaBlockStateContainer container = this.blockContainers.get(regionName);
+            Map<BlockPos, NBTTagCompound> tileEntityMap = this.tileEntities.get(regionName);
+            Map<BlockPos, NextTickListEntry> tickMap = this.pendingBlockTicks.get(regionName);
+
+            if (container == null || tileEntityMap == null || tickMap == null)
+            {
+                LiteModLitematica.logger.error("null map(s) for sub-region '{}' while trying to save chunk-wise schematic", regionName);
+                continue;
+            }
+
+            // We want to loop nice & easy from 0 to n here, but the per-sub-region pos1 can be at
+            // any corner of the area. Thus we need to offset from the total area origin
+            // to the minimum/negative corner (ie. 0,0 in the loop) corner here.
+            final BlockPos minCorner = PositionUtils.getMinCorner(box.getPos1(), box.getPos2());
+            final int offsetX = minCorner.getX();
+            final int offsetY = minCorner.getY();
+            final int offsetZ = minCorner.getZ();
+            // Relative coordinates within the sub-region container:
+            final int startX = bb.minX - minCorner.getX();
+            final int startY = bb.minY - minCorner.getY();
+            final int startZ = bb.minZ - minCorner.getZ();
+            final int endX = startX + (bb.maxX - bb.minX);
+            final int endY = startY + (bb.maxY - bb.minY);
+            final int endZ = startZ + (bb.maxZ - bb.minZ);
+
+            for (int y = startY; y <= endY; ++y)
+            {
+                for (int z = startZ; z <= endZ; ++z)
+                {
+                    for (int x = startX; x <= endX; ++x)
+                    {
+                        posMutable.setPos(x + offsetX, y + offsetY, z + offsetZ);
+                        IBlockState state = world.getBlockState(posMutable).getActualState(world, posMutable);
+                        container.set(x, y, z, state);
+
+                        if (state.getBlock() != Blocks.AIR)
+                        {
+                            this.totalBlocks++;
+                        }
+
+                        if (state.getBlock().hasTileEntity())
+                        {
+                            TileEntity te = world.getTileEntity(posMutable);
+
+                            if (te != null)
+                            {
+                                // TODO Add a TileEntity NBT cache from the Chunk packets, to get the original synced data (too)
+                                BlockPos pos = new BlockPos(x, y, z);
+                                NBTTagCompound tag = te.writeToNBT(new NBTTagCompound());
+                                NBTUtils.writeBlockPosToTag(pos, tag);
+                                tileEntityMap.put(pos, tag);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (world instanceof WorldServer)
+            {
+                StructureBoundingBox structureBB = StructureBoundingBox.createProper(
+                        offsetX + startX  , offsetY + startY  , offsetZ + startZ  ,
+                        offsetX + endX + 1, offsetY + endY + 1, offsetZ + endZ + 1);
+                List<NextTickListEntry> pendingTicks = ((WorldServer) world).getPendingBlockUpdates(structureBB, false);
+
+                if (pendingTicks != null)
+                {
+                    final int listSize = pendingTicks.size();
+                    final long currentTime = world.getTotalWorldTime();
+
+                    // The getPendingBlockUpdates() method doesn't check the y-coordinate... :-<
+                    for (int i = 0; i < listSize; ++i)
+                    {
+                        NextTickListEntry entry = pendingTicks.get(i);
+
+                        if (entry.position.getY() >= offsetY && entry.position.getY() < structureBB.maxY)
+                        {
+                            // Store the delay, ie. relative time
+                            BlockPos posRelative = new BlockPos(
+                                    entry.position.getX() - minCorner.getX(),
+                                    entry.position.getY() - minCorner.getY(),
+                                    entry.position.getZ() - minCorner.getZ());
+                            NextTickListEntry newEntry = new NextTickListEntry(posRelative, entry.getBlock());
+                            newEntry.setPriority(entry.priority);
+                            newEntry.setScheduledTime(entry.scheduledTime - currentTime);
+
+                            tickMap.put(posRelative, newEntry);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private void setSubRegionPositions(List<Box> boxes, BlockPos areaOrigin)
     {
         for (Box box : boxes)
@@ -839,10 +1033,9 @@ public class LitematicaSchematic
     {
         NBTTagCompound nbt = new NBTTagCompound();
 
-        nbt.putInt("Version", SCHEMATIC_VERSION);
-        nbt.put("TotalSize", NBTUtils.createBlockPosTag(this.totalSize));
-        nbt.put("Metadata", this.metadata.writeToNBT());
-        nbt.put("Regions", this.writeSubRegionsToNBT());
+        nbt.setInteger("Version", SCHEMATIC_VERSION);
+        nbt.setTag("Metadata", this.metadata.writeToNBT());
+        nbt.setTag("Regions", this.writeSubRegionsToNBT());
 
         return nbt;
     }
@@ -980,13 +1173,6 @@ public class LitematicaSchematic
 
         if (version >= 1 && version <= SCHEMATIC_VERSION)
         {
-            BlockPos size = NBTUtils.readBlockPos(nbt.getCompound("TotalSize"));
-
-            if (size != null)
-            {
-                this.totalSize = size;
-            }
-
             this.metadata.readFromNBT(nbt.getCompound("Metadata"));
             this.readSubRegionsFromNBT(nbt.getCompound("Regions"), version);
 
@@ -1190,7 +1376,7 @@ public class LitematicaSchematic
         return tileMap;
     }
 
-    public boolean writeToFile(File dir, String fileNameIn, boolean override, IStringConsumer feedback)
+    public boolean writeToFile(File dir, String fileNameIn, boolean override)
     {
         String fileName = fileNameIn;
 
@@ -1205,13 +1391,13 @@ public class LitematicaSchematic
         {
             if (dir.exists() == false && dir.mkdirs() == false)
             {
-                feedback.setString(I18n.format("litematica.error.schematic_write_to_file_failed.directory_creation_failed", dir.getAbsolutePath()));
+                InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.schematic_write_to_file_failed.directory_creation_failed", dir.getAbsolutePath());
                 return false;
             }
 
             if (override == false && fileSchematic.exists())
             {
-                feedback.setString(I18n.format("litematica.error.schematic_write_to_file_failed.exists", fileSchematic.getAbsolutePath()));
+                InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.schematic_write_to_file_failed.exists", fileSchematic.getAbsolutePath());
                 return false;
             }
 
@@ -1223,14 +1409,15 @@ public class LitematicaSchematic
         }
         catch (Exception e)
         {
-            feedback.setString(I18n.format("litematica.error.schematic_write_to_file_failed.exception", fileSchematic.getAbsolutePath()));
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.schematic_write_to_file_failed.exception", fileSchematic.getAbsolutePath());
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, e.getMessage());
         }
 
         return false;
     }
 
     @Nullable
-    public static LitematicaSchematic createFromFile(File dir, String fileName, IStringConsumer feedback)
+    public static LitematicaSchematic createFromFile(File dir, String fileName)
     {
         if (fileName.endsWith(FILE_EXTENSION) == false)
         {
@@ -1241,7 +1428,7 @@ public class LitematicaSchematic
 
         if (fileSchematic.exists() == false || fileSchematic.canRead() == false)
         {
-            feedback.setString(I18n.format("litematica.error.schematic_read_from_file_failed.cant_read", fileSchematic.getAbsolutePath()));
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.schematic_read_from_file_failed.cant_read", fileSchematic.getAbsolutePath());
             return null;
         }
 
@@ -1263,7 +1450,7 @@ public class LitematicaSchematic
         }
         catch (Exception e)
         {
-            feedback.setString(I18n.format("litematica.error.schematic_read_from_file_failed.exception", fileSchematic.getAbsolutePath()));
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.schematic_read_from_file_failed.exception", fileSchematic.getAbsolutePath());
         }
 
         return null;

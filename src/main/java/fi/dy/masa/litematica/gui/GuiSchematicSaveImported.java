@@ -4,7 +4,6 @@ import java.io.File;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.util.FileType;
 import fi.dy.masa.litematica.util.WorldUtils;
-import fi.dy.masa.malilib.gui.GuiTextInputFeedback;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
@@ -26,8 +25,9 @@ public class GuiSchematicSaveImported extends GuiSchematicSaveBase
         this.type = type;
         this.dirSource = dirSource;
         this.inputFileName = inputFileName;
-        this.title = I18n.format("litematica.gui.title.save_imported_schematic");
         this.defaultText = FileUtils.getNameWithoutExtension(inputFileName);
+        this.title = I18n.format("litematica.gui.title.save_imported_schematic");
+        this.useTitleHierarchy = false;
     }
 
     @Override
@@ -110,12 +110,6 @@ public class GuiSchematicSaveImported extends GuiSchematicSaveBase
                 }
 
                 this.gui.addMessage(MessageType.ERROR, "litematica.error.schematic_load.unsupported_type", this.gui.inputFileName);
-            }
-            else if (this.type == ButtonType.CREATE_DIRECTORY)
-            {
-                File dir = this.gui.getListWidget().getCurrentDirectory();
-                String title = "litematica.gui.title.create_directory";
-                this.gui.mc.displayGuiScreen(new GuiTextInputFeedback(256, title, "", this.gui, new DirectoryCreator(dir, this.gui, this.gui.getListWidget())));
             }
         }
 

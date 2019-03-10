@@ -3,13 +3,18 @@ package fi.dy.masa.litematica.util;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.tuple.Pair;
+import com.google.common.collect.ImmutableMap;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement;
 import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.Box;
+import fi.dy.masa.malilib.util.PositionUtils.CoordinateType;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.Mirror;
 import net.minecraft.util.Rotation;
@@ -27,6 +32,42 @@ public class PositionUtils
 {
     public static final BlockPosComparator BLOCK_POS_COMPARATOR = new BlockPosComparator();
     public static final ChunkPosComparator CHUNK_POS_COMPARATOR = new ChunkPosComparator();
+
+    public static final EnumFacing.Axis[] AXES_ALL = new EnumFacing.Axis[] { EnumFacing.Axis.X, EnumFacing.Axis.Y, EnumFacing.Axis.Z };
+    public static final EnumFacing[] FACING_ALL = new EnumFacing[] { EnumFacing.DOWN, EnumFacing.UP, EnumFacing.NORTH, EnumFacing.SOUTH, EnumFacing.WEST, EnumFacing.EAST };
+    public static final EnumFacing[] ADJACENT_SIDES_ZY = new EnumFacing[] { EnumFacing.DOWN, EnumFacing.UP, EnumFacing.NORTH, EnumFacing.SOUTH };
+    public static final EnumFacing[] ADJACENT_SIDES_XY = new EnumFacing[] { EnumFacing.DOWN, EnumFacing.UP, EnumFacing.EAST, EnumFacing.WEST };
+    public static final EnumFacing[] ADJACENT_SIDES_XZ = new EnumFacing[] { EnumFacing.NORTH, EnumFacing.SOUTH, EnumFacing.EAST, EnumFacing.WEST };
+
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_XN_ZN = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i(-1,  0,  0), new Vec3i( 0,  0, -1), new Vec3i(-1,  0, -1) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_XP_ZN = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i( 1,  0,  0), new Vec3i( 0,  0, -1), new Vec3i( 1,  0, -1) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_XN_ZP = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i(-1,  0,  0), new Vec3i( 0,  0,  1), new Vec3i(-1,  0,  1) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_XP_ZP = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i( 1,  0,  0), new Vec3i( 0,  0,  1), new Vec3i( 1,  0,  1) };
+    private static final Vec3i[][] EDGE_NEIGHBOR_OFFSETS_Y = new Vec3i[][] { EDGE_NEIGHBOR_OFFSETS_XN_ZN, EDGE_NEIGHBOR_OFFSETS_XP_ZN, EDGE_NEIGHBOR_OFFSETS_XN_ZP, EDGE_NEIGHBOR_OFFSETS_XP_ZP };
+
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_XN_YN = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i(-1,  0,  0), new Vec3i( 0, -1,  0), new Vec3i(-1, -1,  0) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_XP_YN = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i( 1,  0,  0), new Vec3i( 0, -1,  0), new Vec3i( 1, -1,  0) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_XN_YP = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i(-1,  0,  0), new Vec3i( 0,  1,  0), new Vec3i(-1,  1,  0) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_XP_YP = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i( 1,  0,  0), new Vec3i( 0,  1,  0), new Vec3i( 1,  1,  0) };
+    private static final Vec3i[][] EDGE_NEIGHBOR_OFFSETS_Z = new Vec3i[][] { EDGE_NEIGHBOR_OFFSETS_XN_YN, EDGE_NEIGHBOR_OFFSETS_XP_YN, EDGE_NEIGHBOR_OFFSETS_XN_YP, EDGE_NEIGHBOR_OFFSETS_XP_YP };
+
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_YN_ZN = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i( 0, -1,  0), new Vec3i( 0,  0, -1), new Vec3i( 0, -1, -1) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_YP_ZN = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i( 0,  1,  0), new Vec3i( 0,  0, -1), new Vec3i( 0,  1, -1) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_YN_ZP = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i( 0, -1,  0), new Vec3i( 0,  0,  1), new Vec3i( 0, -1,  1) };
+    private static final Vec3i[] EDGE_NEIGHBOR_OFFSETS_YP_ZP = new Vec3i[] { new Vec3i( 0,  0,  0), new Vec3i( 0,  1,  0), new Vec3i( 0,  0,  1), new Vec3i( 0,  1,  1) };
+    private static final Vec3i[][] EDGE_NEIGHBOR_OFFSETS_X = new Vec3i[][] { EDGE_NEIGHBOR_OFFSETS_YN_ZN, EDGE_NEIGHBOR_OFFSETS_YP_ZN, EDGE_NEIGHBOR_OFFSETS_YN_ZP, EDGE_NEIGHBOR_OFFSETS_YP_ZP };
+
+    public static Vec3i[] getEdgeNeighborOffsets(EnumFacing.Axis axis, int cornerIndex)
+    {
+        switch (axis)
+        {
+            case X: return EDGE_NEIGHBOR_OFFSETS_X[cornerIndex];
+            case Y: return EDGE_NEIGHBOR_OFFSETS_Y[cornerIndex];
+            case Z: return EDGE_NEIGHBOR_OFFSETS_Z[cornerIndex];
+        }
+
+        return null;
+    }
 
     public static BlockPos getMinCorner(BlockPos pos1, BlockPos pos2)
     {
@@ -198,6 +239,52 @@ public class PositionUtils
         return volume;
     }
 
+    public static ImmutableMap<String, StructureBoundingBox> getBoxesWithinChunk(int chunkX, int chunkZ, ImmutableMap<String, Box> subRegions)
+    {
+        ImmutableMap.Builder<String, StructureBoundingBox> builder = new ImmutableMap.Builder<>();
+
+        for (Map.Entry<String, Box> entry : subRegions.entrySet())
+        {
+            Box box = entry.getValue();
+            StructureBoundingBox bb = box != null ? PositionUtils.getBoundsWithinChunkForBox(box, chunkX, chunkZ) : null;
+
+            if (bb != null)
+            {
+                builder.put(entry.getKey(), bb);
+            }
+        }
+
+        return builder.build();
+    }
+
+    public static Set<ChunkPos> getTouchedChunks(ImmutableMap<String, Box> boxes)
+    {
+        return getTouchedChunksForBoxes(boxes.values());
+    }
+
+    public static Set<ChunkPos> getTouchedChunksForBoxes(Collection<Box> boxes)
+    {
+        Set<ChunkPos> set = new HashSet<>();
+
+        for (Box box : boxes)
+        {
+            final int boxXMin = Math.min(box.getPos1().getX(), box.getPos2().getX()) >> 4;
+            final int boxZMin = Math.min(box.getPos1().getZ(), box.getPos2().getZ()) >> 4;
+            final int boxXMax = Math.max(box.getPos1().getX(), box.getPos2().getX()) >> 4;
+            final int boxZMax = Math.max(box.getPos1().getZ(), box.getPos2().getZ()) >> 4;
+
+            for (int cz = boxZMin; cz <= boxZMax; ++cz)
+            {
+                for (int cx = boxXMin; cx <= boxXMax; ++cx)
+                {
+                    set.add(new ChunkPos(cx, cz));
+                }
+            }
+        }
+
+        return set;
+    }
+
     @Nullable
     public static MutableBoundingBox getBoundsWithinChunkForBox(Box box, int chunkX, int chunkZ)
     {
@@ -243,6 +330,11 @@ public class PositionUtils
         return createAABB(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
+    public static AxisAlignedBB createAABBFrom(StructureBoundingBox bb)
+    {
+        return createAABB(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ);
+    }
+
     /**
      * Creates an AABB for the given position
      */
@@ -265,6 +357,45 @@ public class PositionUtils
     public static AxisAlignedBB createAABB(int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
     {
         return new AxisAlignedBB(minX, minY, minZ, maxX, maxY, maxZ);
+    }
+
+    /**
+     * Returns the given position adjusted such that the coordinate indicated by <b>type</b>
+     * is set to the value in <b>value</b>
+     * @param pos
+     * @param value
+     * @param type
+     * @return
+     */
+    public static BlockPos getModifiedPosition(BlockPos pos, int value, CoordinateType type)
+    {
+
+        switch (type)
+        {
+            case X:
+                pos = new BlockPos(     value, pos.getY(), pos.getZ());
+                break;
+            case Y:
+                pos = new BlockPos(pos.getX(),      value, pos.getZ());
+                break;
+            case Z:
+                pos = new BlockPos(pos.getX(), pos.getY(),      value);
+                break;
+        }
+
+        return pos;
+    }
+
+    public static int getCoordinate(BlockPos pos, CoordinateType type)
+    {
+        switch (type)
+        {
+            case X: return pos.getX();
+            case Y: return pos.getY();
+            case Z: return pos.getZ();
+        }
+
+        return 0;
     }
 
     /**

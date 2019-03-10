@@ -6,35 +6,37 @@ import java.util.List;
 import com.google.common.collect.ImmutableList;
 import fi.dy.masa.litematica.gui.GuiSubRegionConfiguration;
 import fi.dy.masa.litematica.gui.Icons;
-import fi.dy.masa.litematica.gui.button.ButtonOnOff;
+import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement;
+import fi.dy.masa.litematica.util.PositionUtils;
 import fi.dy.masa.malilib.gui.GuiBase;
-import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
+import fi.dy.masa.malilib.gui.button.ButtonOnOff;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
-import fi.dy.masa.malilib.gui.widgets.WidgetBase;
-import fi.dy.masa.malilib.gui.wrappers.ButtonWrapper;
+import fi.dy.masa.malilib.gui.widgets.WidgetListEntryBase;
 import fi.dy.masa.malilib.render.RenderUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3i;
 import net.minecraft.util.text.TextFormatting;
 
-public class WidgetPlacementSubRegion extends WidgetBase
+public class WidgetPlacementSubRegion extends WidgetListEntryBase<SubRegionPlacement>
 {
     private final SchematicPlacement schematicPlacement;
     private final WidgetListPlacementSubRegions parent;
     private final SubRegionPlacement placement;
     private final Minecraft mc;
-    private final List<ButtonWrapper<?>> buttons = new ArrayList<>();
     private final boolean isOdd;
     private int buttonsStartX;
 
     public WidgetPlacementSubRegion(int x, int y, int width, int height, float zLevel, boolean isOdd,
-            SchematicPlacement schematicPlacement, SubRegionPlacement placement, WidgetListPlacementSubRegions parent, Minecraft mc)
+            SchematicPlacement schematicPlacement, SubRegionPlacement placement, int listIndex,
+            WidgetListPlacementSubRegions parent, Minecraft mc)
     {
-        super(x, y, width, height, zLevel);
+        super(x, y, width, height, zLevel, placement, listIndex);
 
         this.parent = parent;
         this.schematicPlacement = schematicPlacement;
@@ -42,7 +44,7 @@ public class WidgetPlacementSubRegion extends WidgetBase
         this.isOdd = isOdd;
         this.mc = mc;
 
-        int posX = x + width;
+        int posX = x + width - 2;
         int posY = y + 1;
 
         // Note: These are placed from right to left
@@ -57,39 +59,18 @@ public class WidgetPlacementSubRegion extends WidgetBase
     {
         String label = I18n.format(type.getTranslationKey());
         int len = this.mc.fontRenderer.getStringWidth(label) + 10;
-        xRight -= (len + 2);
-        this.addButton(new ButtonGeneric(0, xRight, y, len, 20, label), new ButtonListener(type, this));
+        xRight -= len;
+        this.addButton(new ButtonGeneric(xRight, y, len, 20, label), new ButtonListener(type, this));
 
-        return xRight;
+        return xRight - 2;
     }
 
     private int createButtonOnOff(int xRight, int y, boolean isCurrentlyOn, WidgetSchematicPlacement.ButtonListener.ButtonType type)
     {
-        ButtonOnOff button = ButtonOnOff.create(xRight + 1, y, -1, true, type.getTranslationKey(), isCurrentlyOn);
-        xRight -= button.getWidth();
+        ButtonOnOff button = ButtonOnOff.createOnOff(xRight, y, -1, true, type.getTranslationKey(), isCurrentlyOn);
         this.addButton(button, new ButtonListener(type, this));
 
-        return xRight;
-    }
-
-    private <T extends ButtonBase> void addButton(T button, IButtonActionListener<T> listener)
-    {
-        this.buttons.add(new ButtonWrapper<>(button, listener));
-    }
-
-    @Override
-    protected boolean onMouseClickedImpl(int mouseX, int mouseY, int mouseButton)
-    {
-        for (ButtonWrapper<?> entry : this.buttons)
-        {
-            if (entry.mousePressed(this.mc, mouseX, mouseY, mouseButton))
-            {
-                // Don't call super if the button press got handled
-                return true;
-            }
-        }
-
-        return true;
+        return xRight - button.getButtonWidth() - 2;
     }
 
     @Override
@@ -156,16 +137,14 @@ public class WidgetPlacementSubRegion extends WidgetBase
             icon.renderAt(this.buttonsStartX - icon.getWidth() - 2, this.y + 6, this.zLevel, false, false);
         }
 
-        for (int i = 0; i < this.buttons.size(); ++i)
-        {
-            this.buttons.get(i).draw(this.mc, mouseX, mouseY, 0);
-        }
+        super.render(mouseX, mouseY, placementSelected);
     }
 
     @Override
     public void postRenderHovered(int mouseX, int mouseY, boolean selected)
     {
-        File schematicFile = this.schematicPlacement.getSchematic().getFile();
+        LitematicaSchematic schematic = this.schematicPlacement.getSchematic();
+        File schematicFile = schematic.getFile();
         String fileName = schematicFile != null ? schematicFile.getName() : I18n.format("litematica.gui.label.schematic_placement.in_memory");
 
         if (this.placement.isRegionPlacementModifiedFromDefault() &&
@@ -177,8 +156,23 @@ public class WidgetPlacementSubRegion extends WidgetBase
         else if (GuiBase.isMouseOver(mouseX, mouseY, this.x, this.y, this.buttonsStartX - 14, this.height))
         {
             List<String> text = new ArrayList<>();
-            text.add(I18n.format("litematica.gui.label.schematic_placement.schematic_name", this.schematicPlacement.getSchematic().getMetadata().getName()));
+            text.add(I18n.format("litematica.gui.label.schematic_placement.schematic_name", schematic.getMetadata().getName()));
             text.add(I18n.format("litematica.gui.label.schematic_placement.schematic_file", fileName));
+
+            BlockPos o = this.placement.getPos();
+            o = PositionUtils.getTransformedBlockPos(o, this.schematicPlacement.getMirror(), this.schematicPlacement.getRotation());
+            o = o.add(this.schematicPlacement.getOrigin());
+            String strOrigin = String.format("x: %d, y: %d, z: %d", o.getX(), o.getY(), o.getZ());
+            text.add(I18n.format("litematica.gui.label.schematic_placement.origin", strOrigin));
+
+            Vec3i size = schematic.getAreaSize(this.placement.getName());
+
+            if (size != null)
+            {
+                String strSize = String.format("%d x %d x %d", size.getX(), size.getY(), size.getZ());
+                text.add(I18n.format("litematica.gui.label.placement_sub.region_size", strSize));
+            }
+
             RenderUtils.drawHoverText(mouseX, mouseY, text);
         }
     }

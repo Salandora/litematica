@@ -2,10 +2,10 @@ package fi.dy.masa.litematica.util;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import javax.annotation.Nullable;
 import com.google.common.collect.ImmutableList;
@@ -13,19 +13,22 @@ import com.mojang.datafixers.DataFixer;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.interfaces.IMixinChunkProviderClient;
-import fi.dy.masa.litematica.render.LitematicaRenderer;
+import fi.dy.masa.litematica.materials.MaterialCache;
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.litematica.schematic.SchematicaSchematic;
+import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.Box;
+import fi.dy.masa.litematica.tool.ToolMode;
+import fi.dy.masa.litematica.util.PositionUtils.Corner;
 import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
+import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper.HitType;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.litematica.world.WorldSchematic;
 import fi.dy.masa.malilib.interfaces.IStringConsumer;
 import fi.dy.masa.malilib.util.FileUtils;
-import fi.dy.masa.malilib.util.StringUtils;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import fi.dy.masa.malilib.util.InfoUtils;
+import fi.dy.masa.malilib.util.LayerRange;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRedstoneComparator;
 import net.minecraft.block.BlockRedstoneRepeater;
@@ -35,6 +38,8 @@ import net.minecraft.block.BlockTrapDoor;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -53,14 +58,12 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.EnumDifficulty;
 import net.minecraft.world.GameType;
 import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.chunk.Chunk;
@@ -87,7 +90,7 @@ public class WorldUtils
             File inputDir, String inputFileName, File outputDir, String outputFileName, boolean ignoreEntities, boolean override, IStringConsumer feedback)
     {
         LitematicaSchematic litematicaSchematic = convertSchematicaSchematicToLitematicaSchematic(inputDir, inputFileName, ignoreEntities, feedback);
-        return litematicaSchematic != null && litematicaSchematic.writeToFile(outputDir, outputFileName, override, feedback);
+        return litematicaSchematic != null && litematicaSchematic.writeToFile(outputDir, outputFileName, override);
     }
 
     @Nullable
@@ -115,8 +118,9 @@ public class WorldUtils
         area.setName(subRegionName);
         subRegionName = area.createNewSubRegionBox(BlockPos.ORIGIN, subRegionName);
         area.setSelectedSubRegionBox(subRegionName);
-        area.getSelectedSubRegionBox().setPos1(BlockPos.ORIGIN); // createNewSubRegionBox() offsets the default position by one when creating the first box...
-        area.getSelectedSubRegionBox().setPos2((new BlockPos(schematic.getSize())).add(-1, -1, -1));
+        Box box = area.getSelectedSubRegionBox();
+        area.setSubRegionCornerPos(box, Corner.CORNER_1, BlockPos.ORIGIN);
+        area.setSubRegionCornerPos(box, Corner.CORNER_2, (new BlockPos(schematic.getSize())).add(-1, -1, -1));
 
         LitematicaSchematic litematicaSchematic = LitematicaSchematic.createFromWorld(world, area, false, "?", feedback);
 
@@ -136,7 +140,7 @@ public class WorldUtils
             File outputDir, String outputFileName, boolean ignoreEntities, boolean override, IStringConsumer feedback)
     {
         LitematicaSchematic litematicaSchematic = convertStructureToLitematicaSchematic(structureDir, structureFileName, ignoreEntities, feedback);
-        return litematicaSchematic != null && litematicaSchematic.writeToFile(outputDir, outputFileName, override, feedback);
+        return litematicaSchematic != null && litematicaSchematic.writeToFile(outputDir, outputFileName, override);
     }
 
     @Nullable
@@ -166,8 +170,9 @@ public class WorldUtils
             area.setName(subRegionName);
             subRegionName = area.createNewSubRegionBox(BlockPos.ORIGIN, subRegionName);
             area.setSelectedSubRegionBox(subRegionName);
-            area.getSelectedSubRegionBox().setPos1(BlockPos.ORIGIN); // createNewSubRegionBox() offsets the default position by one when creating the first box...
-            area.getSelectedSubRegionBox().setPos2(template.getSize().add(-1, -1, -1));
+            Box box = area.getSelectedSubRegionBox();
+            area.setSubRegionCornerPos(box, Corner.CORNER_1, BlockPos.ORIGIN);
+            area.setSubRegionCornerPos(box, Corner.CORNER_2, template.getSize().add(-1, -1, -1));
 
             LitematicaSchematic litematicaSchematic = LitematicaSchematic.createFromWorld(world, area, ignoreEntities, template.getAuthor(), feedback);
 
@@ -187,6 +192,116 @@ public class WorldUtils
         }
 
         return null;
+    }
+
+    public static boolean convertLitematicaSchematicToSchematicaSchematic(
+            File inputDir, String inputFileName, File outputDir, String outputFileName, boolean ignoreEntities, boolean override, IStringConsumer feedback)
+    {
+        SchematicaSchematic schematic = convertLitematicaSchematicToSchematicaSchematic(inputDir, inputFileName, ignoreEntities, feedback);
+        return schematic != null && schematic.writeToFile(outputDir, outputFileName, override, feedback);
+    }
+
+    @Nullable
+    public static SchematicaSchematic convertLitematicaSchematicToSchematicaSchematic(File inputDir, String inputFileName, boolean ignoreEntities, IStringConsumer feedback)
+    {
+        LitematicaSchematic litematicaSchematic = LitematicaSchematic.createFromFile(inputDir, inputFileName);
+
+        if (litematicaSchematic == null)
+        {
+            feedback.setString("litematica.error.schematic_conversion.litematica_to_schematic.failed_to_read_schematic");
+            return null;
+        }
+
+        WorldSettings settings = new WorldSettings(0L, GameType.CREATIVE, false, false, WorldType.FLAT);
+        WorldClient world = new WorldSchematic(null, settings, 0, EnumDifficulty.NORMAL, Minecraft.getMinecraft().profiler);
+
+        BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
+        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, size);
+        SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
+        litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
+
+        SchematicaSchematic schematic = SchematicaSchematic.createFromWorld(world, BlockPos.ORIGIN, size, ignoreEntities);
+
+        if (schematic == null)
+        {
+            feedback.setString("litematica.error.schematic_conversion.litematica_to_schematic.failed_to_create_schematic");
+        }
+
+        return schematic;
+    }
+
+    public static boolean convertLitematicaSchematicToVanillaStructure(
+            File inputDir, String inputFileName, File outputDir, String outputFileName, boolean ignoreEntities, boolean override, IStringConsumer feedback)
+    {
+        Template template = convertLitematicaSchematicToVanillaStructure(inputDir, inputFileName, ignoreEntities, feedback);
+        return writeVanillaStructureToFile(template, outputDir, outputFileName, override, feedback);
+    }
+
+    @Nullable
+    public static Template convertLitematicaSchematicToVanillaStructure(File inputDir, String inputFileName, boolean ignoreEntities, IStringConsumer feedback)
+    {
+        LitematicaSchematic litematicaSchematic = LitematicaSchematic.createFromFile(inputDir, inputFileName);
+
+        if (litematicaSchematic == null)
+        {
+            feedback.setString("litematica.error.schematic_conversion.litematica_to_schematic.failed_to_read_schematic");
+            return null;
+        }
+
+        WorldSettings settings = new WorldSettings(0L, GameType.CREATIVE, false, false, WorldType.FLAT);
+        WorldClient world = new WorldSchematic(null, settings, 0, EnumDifficulty.NORMAL, Minecraft.getMinecraft().profiler);
+
+        BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
+        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, size);
+        SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
+        litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
+
+        Template template = new Template();
+        template.takeBlocksFromWorld(world, BlockPos.ORIGIN, size, ignoreEntities == false, Blocks.STRUCTURE_VOID);
+
+        return template;
+    }
+
+    private static boolean writeVanillaStructureToFile(Template template, File dir, String fileNameIn, boolean override, IStringConsumer feedback)
+    {
+        String fileName = fileNameIn;
+        String extension = ".nbt";
+
+        if (fileName.endsWith(extension) == false)
+        {
+            fileName = fileName + extension;
+        }
+
+        File file = new File(dir, fileName);
+        FileOutputStream os = null;
+
+        try
+        {
+            if (dir.exists() == false && dir.mkdirs() == false)
+            {
+                feedback.setString(I18n.format("litematica.error.schematic_write_to_file_failed.directory_creation_failed", dir.getAbsolutePath()));
+                return false;
+            }
+
+            if (override == false && file.exists())
+            {
+                feedback.setString(I18n.format("litematica.error.structure_write_to_file_failed.exists", file.getAbsolutePath()));
+                return false;
+            }
+
+            NBTTagCompound tag = template.writeToNBT(new NBTTagCompound());
+            os = new FileOutputStream(file);
+            CompressedStreamTools.writeCompressed(tag, os);
+            os.close();
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            feedback.setString(I18n.format("litematica.error.structure_write_to_file_failed.exception", file.getAbsolutePath()));
+        }
+
+        return false;
     }
 
     private static Template readTemplateFromStream(InputStream stream, DataFixer fixer) throws IOException
@@ -219,142 +334,25 @@ public class WorldUtils
         }
     }
 
-    /**
-     * Best name. Returns the integrated server world for the current dimension
-     * in single player, otherwise just the client world.
-     * @param mc
-     * @return
-     */
-    @Nullable
-    public static World getBestWorld(Minecraft mc)
+    public static void setToolModeBlockState(ToolMode mode, boolean primary, Minecraft mc)
     {
-        if (mc.isSingleplayer())
+        RayTraceWrapper traceWrapper = RayTraceUtils.getGenericTrace(mc.world, mc.player, 6, true);
+        IBlockState state = Blocks.AIR.getDefaultState();
+
+        if (traceWrapper != null &&
+            traceWrapper.getHitType() == HitType.VANILLA &&
+            traceWrapper.getRayTraceResult().typeOfHit == RayTraceResult.Type.BLOCK)
         {
-            IntegratedServer server = mc.getIntegratedServer();
-            return server.getWorld(mc.world.dimension.getType());
+            state = mc.world.getBlockState(traceWrapper.getRayTraceResult().getBlockPos());
+        }
+
+        if (primary)
+        {
+            mode.setPrimaryBlock(state);
         }
         else
         {
-            return mc.world;
-        }
-    }
-
-    public static void markSchematicChunkForRenderUpdate(SubChunkPos chunkPos)
-    {
-        World world = SchematicWorldHandler.getSchematicWorld();
-
-        if (world != null)
-        {
-            Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
-            long key = ChunkPos.asLong(chunkPos.getX(), chunkPos.getZ());
-
-            if (schematicChunks.containsKey(key) && clientChunks.containsKey(key))
-            {
-                WorldRenderer renderer = LitematicaRenderer.getInstance().getWorldRenderer();
-                renderer.markBlockRangeForRenderUpdate((chunkPos.getX() << 4) - 1, (chunkPos.getY() << 4) - 1, (chunkPos.getZ() << 4) - 1,
-                                                       (chunkPos.getX() << 4) + 1, (chunkPos.getY() << 4) + 1, (chunkPos.getZ() << 4) + 1);
-            }
-        }
-    }
-
-    public static void markSchematicChunkForRenderUpdate(BlockPos pos)
-    {
-        World world = SchematicWorldHandler.getSchematicWorld();
-
-        if (world != null)
-        {
-            Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
-            long key = ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4);
-
-            if (schematicChunks.containsKey(key) && clientChunks.containsKey(key))
-            {
-                WorldRenderer renderer = LitematicaRenderer.getInstance().getWorldRenderer();
-                renderer.markBlockRangeForRenderUpdate(pos.getX() - 1, pos.getY() - 1, pos.getZ() - 1,pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
-            }
-        }
-    }
-
-    public static void markSchematicChunksForRenderUpdateBetweenX(int x1, int x2)
-    {
-        World world = SchematicWorldHandler.getSchematicWorld();
-
-        if (world != null)
-        {
-            final int xMin = Math.min(x1, x2);
-            final int xMax = Math.max(x1, x2);
-            final int cxMin = (xMin >> 4);
-            final int cxMax = (xMax >> 4);
-            WorldRenderer renderer = LitematicaRenderer.getInstance().getWorldRenderer();
-            Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
-
-            for (Chunk chunk : schematicChunks.values())
-            {
-                // Only mark chunks that are actually rendered (if the schematic world contains more chunks)
-                if (chunk.x >= cxMin && chunk.x <= cxMax && chunk.isEmpty() == false &&
-                    clientChunks.containsKey(ChunkPos.asLong(chunk.x, chunk.z)))
-                {
-                    x1 = Math.max( chunk.x << 4      , xMin);
-                    x2 = Math.min((chunk.x << 4) + 15, xMax);
-                    renderer.markBlockRangeForRenderUpdate(x1, 0, (chunk.z << 4), x2, 255, (chunk.z << 4) + 15);
-                }
-            }
-        }
-    }
-
-    public static void markAllSchematicChunksForRenderUpdate()
-    {
-        markSchematicChunksForRenderUpdateBetweenY(LayerRange.WORLD_VERTICAL_SIZE_MIN, LayerRange.WORLD_VERTICAL_SIZE_MAX);
-    }
-
-    public static void markSchematicChunksForRenderUpdateBetweenY(int y1, int y2)
-    {
-        World world = SchematicWorldHandler.getSchematicWorld();
-
-        if (world != null)
-        {
-            WorldRenderer renderer = LitematicaRenderer.getInstance().getWorldRenderer();
-            Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
-
-            for (Chunk chunk : schematicChunks.values())
-            {
-                // Only mark chunks that are actually rendered (if the schematic world contains more chunks)
-                if (chunk.isEmpty() == false && clientChunks.containsKey(ChunkPos.asLong(chunk.x, chunk.z)))
-                {
-                    renderer.markBlockRangeForRenderUpdate((chunk.x << 4) - 1, y1, (chunk.z << 4) - 1, (chunk.x << 4) + 16, y2, (chunk.z << 4) + 16);
-                }
-            }
-        }
-    }
-
-    public static void markSchematicChunksForRenderUpdateBetweenZ(int z1, int z2)
-    {
-        World world = SchematicWorldHandler.getSchematicWorld();
-
-        if (world != null)
-        {
-            final int zMin = Math.min(z1, z2);
-            final int zMax = Math.max(z1, z2);
-            final int czMin = (zMin >> 4);
-            final int czMax = (zMax >> 4);
-            WorldRenderer renderer = LitematicaRenderer.getInstance().getWorldRenderer();
-            Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
-
-            for (Chunk chunk : schematicChunks.values())
-            {
-                // Only mark chunks that are actually rendered (if the schematic world contains more chunks)
-                if (chunk.z >= czMin && chunk.z <= czMax && chunk.isEmpty() == false &&
-                    clientChunks.containsKey(ChunkPos.asLong(chunk.x, chunk.z)))
-                {
-                    z1 = Math.max( chunk.z << 4      , zMin);
-                    z2 = Math.min((chunk.z << 4) + 15, zMax);
-                    renderer.markBlockRangeForRenderUpdate((chunk.x << 4), 0, z1, (chunk.x << 4) + 15, 255, z2);
-                }
-            }
+            mode.setSecondaryBlock(state);
         }
     }
 
@@ -381,7 +379,7 @@ public class WorldUtils
         {
             World world = SchematicWorldHandler.getSchematicWorld();
             IBlockState state = world.getBlockState(pos);
-            ItemStack stack = ItemUtils.getItemForBlock(world, pos, state, true);
+            ItemStack stack = MaterialCache.getInstance().getItemForState(state, world, pos);
 
             if (stack.isEmpty() == false)
             {
@@ -402,7 +400,7 @@ public class WorldUtils
                     InventoryUtils.setPickedItemToHand(stack, mc);
                     mc.playerController.sendSlotPacket(mc.player.getHeldItem(EnumHand.MAIN_HAND), 36 + inv.currentItem);
 
-                    return true;
+                    //return true;
                 }
                 else
                 {
@@ -415,9 +413,11 @@ public class WorldUtils
                         InventoryUtils.setPickedItemToHand(stack, mc);
                     }
 
-                    return shouldPick == false || canPick;
+                    //return shouldPick == false || canPick;
                 }
             }
+
+            return true;
         }
 
         return false;
@@ -425,12 +425,11 @@ public class WorldUtils
 
     public static void easyPlaceOnUseTick(Minecraft mc)
     {
-        if (Configs.Generic.EASY_PLACE_HOLD_ENABLED.getBooleanValue() &&
+        if (mc.player != null &&
+            Configs.Generic.EASY_PLACE_HOLD_ENABLED.getBooleanValue() &&
             Configs.Generic.EASY_PLACE_MODE.getBooleanValue() &&
-            mc.player != null &&
-            (Hotkeys.EASY_PLACE_ACTIVATION.getKeybind().isKeybindHeld() ||
-             Hotkeys.EASY_PLACE_ACTIVATION.getKeybind().isValid() == false) &&
-             mc.gameSettings.keyBindUseItem.isKeyDown())
+            Hotkeys.EASY_PLACE_ACTIVATION.getKeybind().isKeybindHeld() &&
+            KeybindMulti.isKeyDown(mc.gameSettings.keyBindUseItem.getKeyCode()))
         {
             WorldUtils.handleEasyPlace(mc);
         }
@@ -443,15 +442,16 @@ public class WorldUtils
         if (traceWrapper != null && traceWrapper.getHitType() == RayTraceWrapper.HitType.SCHEMATIC_BLOCK)
         {
             RayTraceResult trace = traceWrapper.getRayTraceResult();
+            RayTraceResult traceVanilla = RayTraceUtils.getRayTraceFromEntity(mc.world, mc.player, false, 6);
             BlockPos pos = trace.getBlockPos();
             World world = SchematicWorldHandler.getSchematicWorld();
             IBlockState stateSchematic = world.getBlockState(pos);
-            ItemStack stack = ItemUtils.getItemForBlock(world, pos, stateSchematic, true);
+            ItemStack stack = MaterialCache.getInstance().getItemForState(stateSchematic);
 
             // Already placed to that position, possible server sync delay
             if (easyPlaceIsPositionCached(pos))
             {
-                return true;
+                return false;
             }
 
             if (stack.isEmpty() == false)
@@ -469,23 +469,51 @@ public class WorldUtils
 
                 if (stateSchematic == stateClient)
                 {
-                    return true;
+                    return false;
                 }
 
                 // Abort if there is already a block in the target position
                 if (easyPlaceBlockChecksCancel(stateSchematic, stateClient, mc.player, trace, stack))
                 {
-                    return true;
+                    return false;
                 }
 
                 // Abort if the required item was not able to be pick-block'd
                 if (doSchematicWorldPickBlock(true, mc) == false)
                 {
-                    return true;
+                    return false;
+                }
+
+                EnumHand hand = EntityUtils.getUsedHandForItem(mc.player, stack);
+
+                // Abort if the wrong item is in the player's hand
+                if (hand == null)
+                {
+                    return false;
                 }
 
                 Vec3d hitPos = trace.hitVec;
                 EnumFacing sideOrig = trace.sideHit;
+
+                // If there is a block in the world right behind the targeted schematic block, then use
+                // that block as the click position
+                if (traceVanilla != null && traceVanilla.typeOfHit == RayTraceResult.Type.BLOCK)
+                {
+                    BlockPos posVanilla = traceVanilla.getBlockPos();
+                    IBlockState stateVanilla = mc.world.getBlockState(posVanilla);
+
+                    if (stateVanilla.getBlock().isReplaceable(mc.world, posVanilla) == false)
+                    {
+                        posVanilla = posVanilla.offset(traceVanilla.sideHit);
+
+                        if (pos.equals(posVanilla))
+                        {
+                            hitPos = traceVanilla.hitVec;
+                            sideOrig = traceVanilla.sideHit;
+                        }
+                    }
+                }
+
                 EnumFacing side = applyPlacementFacing(stateSchematic, sideOrig, stateClient);
 
                 // Carpet Accurate Placement protocol support, plus BlockSlab support
@@ -507,10 +535,12 @@ public class WorldUtils
                         mc.playerController.processRightClickBlock(mc.player, mc.world, pos, side, hitPos, hand);
                     }
                 }
+
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 
     private static boolean easyPlaceBlockChecksCancel(IBlockState stateSchematic, IBlockState stateClient,
@@ -628,6 +658,28 @@ public class WorldUtils
      */
     public static boolean handlePlacementRestriction(Minecraft mc)
     {
+        boolean cancel = placementRestrictionInEffect(mc);
+
+        if (cancel)
+        {
+            InfoUtils.printActionbarMessage("litematica.message.placement_restriction_in_effect");
+        }
+
+        return cancel;
+    }
+
+    /**
+     * Does placement restriction checks for the targeted position.
+     * If the targeted position is outside of the current layer range, or should be air
+     * in the schematic, or the player is holding the wrong item in hand, then true is returned
+     * to indicate that the use action should be cancelled.
+     * @param mc
+     * @param doEasyPlace
+     * @param restrictPlacement
+     * @return
+     */
+    private static boolean placementRestrictionInEffect(Minecraft mc)
+    {
         RayTraceResult trace = mc.objectMouseOver;
 
         if (trace.type == RayTraceResult.Type.BLOCK)
@@ -644,117 +696,18 @@ public class WorldUtils
             }
 
             IBlockState stateSchematic = worldSchematic.getBlockState(pos);
-            ItemStack stack = ItemUtils.getItemForBlock(worldSchematic, pos, stateSchematic, true);
+            ItemStack stack = MaterialCache.getInstance().getItemForState(stateSchematic);
 
-            if (stack.isEmpty() == false)
+            // The player is holding the wrong item for the targeted position
+            if (stack.isEmpty() || EntityUtils.getUsedHandForItem(mc.player, stack) == null)
             {
-                EnumHand hand = EntityUtils.getUsedHandForItem(mc.player, stack);
-
-                // The player is holding the wrong item for the targeted position
-                if (hand == null)
-                {
-                    return true;
-                }
-
-                Vec3d hit = trace.hitVec;
-                BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, pos, trace.sideHit, (float) hit.x, (float) hit.y, (float) hit.z));
-
-                // Placement position is not already occupied
-                return stateClient.isReplaceable(ctx);
+                return true;
             }
 
             return true;
         }
 
         return false;
-    }
-
-    public static void deleteSelectionVolumes(Minecraft mc)
-    {
-        if (mc.player != null && mc.player.abilities.isCreativeMode)
-        {
-            final AreaSelection area = DataManager.getSelectionManager().getCurrentSelection();
-
-            if (area != null)
-            {
-                if (mc.isSingleplayer())
-                {
-                    final WorldServer world = mc.getIntegratedServer().getWorld(mc.player.getEntityWorld().dimension.getType());
-
-                    world.addScheduledTask(new Runnable()
-                    {
-                        public void run()
-                        {
-                            Box currentBox = area.getSelectedSubRegionBox();
-                            Collection<Box> boxes;
-
-                            if (currentBox != null)
-                            {
-                                boxes = ImmutableList.of(currentBox);
-                            }
-                            else
-                            {
-                                boxes = area.getAllSubRegionBoxes();
-                            }
-
-                            if (deleteSelectionVolumes(world, boxes))
-                            {
-                                StringUtils.printActionbarMessage("litematica.message.area_cleared");
-                            }
-                            else
-                            {
-                                StringUtils.printActionbarMessage("litematica.message.area_clear_fail");
-                            }
-                        }
-                    });
-
-                    StringUtils.printActionbarMessage("litematica.message.scheduled_task_added");
-                }
-                else
-                {
-                    StringUtils.printActionbarMessage("litematica.message.only_works_in_single_player");
-                }
-            }
-            else
-            {
-                StringUtils.printActionbarMessage("litematica.message.no_area_selected");
-            }
-        }
-    }
-
-    public static boolean deleteSelectionVolumes(World world, Collection<Box> boxes)
-    {
-        IBlockState air = Blocks.AIR.getDefaultState();
-        IBlockState barrier = Blocks.BARRIER.getDefaultState();
-        BlockPos.MutableBlockPos posMutable = new BlockPos.MutableBlockPos();
-
-        for (Box box : boxes)
-        {
-            BlockPos posMin = PositionUtils.getMinCorner(box.getPos1(), box.getPos2());
-            BlockPos posMax = PositionUtils.getMaxCorner(box.getPos1(), box.getPos2());
-
-            for (int z = posMin.getZ(); z <= posMax.getZ(); ++z)
-            {
-                for (int x = posMin.getX(); x <= posMax.getX(); ++x)
-                {
-                    for (int y = posMax.getY(); y >= posMin.getY(); --y)
-                    {
-                        posMutable.setPos(x, y, z);
-                        TileEntity te = world.getTileEntity(posMutable);
-
-                        if (te instanceof IInventory)
-                        {
-                            ((IInventory) te).clear();
-                            world.setBlockState(posMutable, barrier, 0x12);
-                        }
-
-                        world.setBlockState(posMutable, air, 0x12);
-                    }
-                }
-            }
-        }
-
-        return true;
     }
 
     public static boolean easyPlaceIsPositionCached(BlockPos pos)

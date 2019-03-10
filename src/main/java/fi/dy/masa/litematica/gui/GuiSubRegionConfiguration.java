@@ -2,7 +2,6 @@ package fi.dy.masa.litematica.gui;
 
 import javax.annotation.Nullable;
 import fi.dy.masa.litematica.gui.GuiMainMenu.ButtonListenerChangeMenu;
-import fi.dy.masa.litematica.gui.button.ButtonOnOff;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement;
 import fi.dy.masa.litematica.util.PositionUtils;
@@ -10,9 +9,11 @@ import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.GuiTextFieldInteger;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
+import fi.dy.masa.malilib.gui.button.ButtonOnOff;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.interfaces.ITextFieldListener;
 import net.minecraft.client.MainWindow;
+import fi.dy.masa.malilib.util.PositionUtils.CoordinateType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
@@ -39,7 +40,6 @@ public class GuiSubRegionConfiguration extends GuiBase
     {
         super.initGui();
 
-        int id = 0;
         int width = 120;
         int x = this.width - width - 10;
         int y = 22;
@@ -90,7 +90,7 @@ public class GuiSubRegionConfiguration extends GuiBase
         label = I18n.format("litematica.gui.button.placement_sub.placement_configuration");
         int buttonWidth = this.fontRenderer.getStringWidth(label) + 10;
         x = 10;
-        ButtonGeneric button = new ButtonGeneric(id, x, y, buttonWidth, 20, label);
+        ButtonGeneric button = new ButtonGeneric(x, y, buttonWidth, 20, label);
         this.addButton(button, new ButtonListener(ButtonListener.Type.PLACEMENT_CONFIGURATION, this.schematicPlacement, this.placement, this));
 
         MainWindow window = Minecraft.getInstance().mainWindow;
@@ -99,7 +99,7 @@ public class GuiSubRegionConfiguration extends GuiBase
         int menuButtonWidth = this.fontRenderer.getStringWidth(label) + 20;
         x = window.getScaledHeight() >= 270 ? this.width - menuButtonWidth - 10 : x + buttonWidth + 4;
 
-        button = new ButtonGeneric(id, x, y, menuButtonWidth, 20, label);
+        button = new ButtonGeneric(x, y, menuButtonWidth, 20, label);
         this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
 
         this.updateElements();
@@ -112,7 +112,9 @@ public class GuiSubRegionConfiguration extends GuiBase
         int offset = this.mc.fontRenderer.getStringWidth(label) + 4;
 
         // The sub-region placements are relative
-        BlockPos pos = this.placement.getPos().add(this.schematicPlacement.getOrigin());
+        BlockPos pos = this.placement.getPos();
+        pos = PositionUtils.getTransformedBlockPos(pos, this.schematicPlacement.getMirror(), this.schematicPlacement.getRotation());
+        pos = pos.add(this.schematicPlacement.getOrigin());
         String text = "";
 
         switch (type)
@@ -122,7 +124,7 @@ public class GuiSubRegionConfiguration extends GuiBase
             case Z: text = String.valueOf(pos.getZ()); break;
         }
 
-        GuiTextFieldInteger textField = new GuiTextFieldInteger(0, x + offset, y + 1, width, 16, this.mc.fontRenderer);
+        GuiTextFieldInteger textField = new GuiTextFieldInteger(x + offset, y + 1, width, 16, this.mc.fontRenderer);
         textField.setText(text);
         TextFieldListener listener = new TextFieldListener(type, this.schematicPlacement, this.placement, this);
         this.addTextField(textField, listener);
@@ -130,7 +132,7 @@ public class GuiSubRegionConfiguration extends GuiBase
 
     private int createButtonOnOff(int x, int y, int width, boolean isCurrentlyOn, ButtonListener.Type type)
     {
-        ButtonOnOff button = ButtonOnOff.create(x, y, width, false, type.getTranslationKey(), isCurrentlyOn);
+        ButtonOnOff button = ButtonOnOff.createOnOff(x, y, width, false, type.getTranslationKey(), isCurrentlyOn);
         this.addButton(button, new ButtonListener(type, this.schematicPlacement, this.placement, this));
         return button.getWidth();
     }
@@ -150,7 +152,7 @@ public class GuiSubRegionConfiguration extends GuiBase
                 String str = pre + I18n.format("litematica.message.value." + (enabled ? "on" : "off")) + TXT_RST;
                 String hover = I18n.format("litematica.gui.button.schematic_placement.hover.rendering", str);
 
-                this.addButton(new ButtonGeneric(0, x, y, width, 20, label, hover), listener);
+                this.addButton(new ButtonGeneric(x, y, width, 20, label, hover), listener);
                 break;
             }
 
@@ -159,7 +161,7 @@ public class GuiSubRegionConfiguration extends GuiBase
             case NUDGE_COORD_Z:
             {
                 String hover = I18n.format("litematica.gui.button.hover.plus_minus_tip");
-                ButtonGeneric button = new ButtonGeneric(0, x, y, Icons.BUTTON_PLUS_MINUS_16, hover);
+                ButtonGeneric button = new ButtonGeneric(x, y, Icons.BUTTON_PLUS_MINUS_16, hover);
                 this.addButton(button, listener);
                 return;
             }
@@ -181,7 +183,7 @@ public class GuiSubRegionConfiguration extends GuiBase
                 break;
         }
 
-        ButtonGeneric button = new ButtonGeneric(0, x, y, width, 20, label);
+        ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);
         this.addButton(button, listener);
 
         if (type == ButtonListener.Type.RESET_PLACEMENT)
@@ -359,12 +361,6 @@ public class GuiSubRegionConfiguration extends GuiBase
         }
 
         @Override
-        public boolean onGuiClosed(GuiTextField textField)
-        {
-            return this.onTextChange(textField);
-        }
-
-        @Override
         public boolean onTextChange(GuiTextField textField)
         {
             try
@@ -394,12 +390,5 @@ public class GuiSubRegionConfiguration extends GuiBase
 
             return false;
         }
-    }
-
-    public enum CoordinateType
-    {
-        X,
-        Y,
-        Z
     }
 }

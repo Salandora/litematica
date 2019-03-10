@@ -1,18 +1,16 @@
 package fi.dy.masa.litematica.gui;
 
-import java.util.Collections;
 import javax.annotation.Nullable;
-import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.data.SchematicVerifier;
-import fi.dy.masa.litematica.data.SchematicVerifier.BlockMismatch;
-import fi.dy.masa.litematica.data.SchematicVerifier.MismatchType;
 import fi.dy.masa.litematica.gui.GuiMainMenu.ButtonListenerChangeMenu;
 import fi.dy.masa.litematica.gui.GuiSchematicVerifier.BlockMismatchEntry;
-import fi.dy.masa.litematica.gui.widgets.WidgetSchematicVerificationResult;
-import fi.dy.masa.litematica.interfaces.ICompletionListener;
-import fi.dy.masa.litematica.render.infohud.InfoHud;
 import fi.dy.masa.litematica.gui.widgets.WidgetListSchematicVerificationResults;
+import fi.dy.masa.litematica.gui.widgets.WidgetSchematicVerificationResult;
+import fi.dy.masa.litematica.render.infohud.InfoHud;
+import fi.dy.masa.litematica.render.infohud.RenderPhase;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
+import fi.dy.masa.litematica.schematic.verifier.SchematicVerifier;
+import fi.dy.masa.litematica.schematic.verifier.SchematicVerifier.BlockMismatch;
+import fi.dy.masa.litematica.schematic.verifier.SchematicVerifier.MismatchType;
 import fi.dy.masa.litematica.util.BlockInfoListType;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.litematica.world.WorldSchematic;
@@ -21,18 +19,19 @@ import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.interfaces.ISelectionListener;
+import fi.dy.masa.malilib.interfaces.ICompletionListener;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 
 public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, WidgetSchematicVerificationResult, WidgetListSchematicVerificationResults>
                                     implements ISelectionListener<BlockMismatchEntry>, ICompletionListener
 {
-    private final SchematicPlacement placement;
-    @Nullable
-    private BlockMismatchEntry selectedDataEntry;
-    private int id;
+    private static SchematicVerifier verifierLast;
     // static to remember the mode over GUI close/open cycles
     private static MismatchType resultMode = MismatchType.ALL;
+
+    private final SchematicPlacement placement;
+    private final SchematicVerifier verifier;
 
     public GuiSchematicVerifier(SchematicPlacement placement)
     {
@@ -40,6 +39,16 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
 
         this.title = I18n.format("litematica.gui.title.schematic_verifier", placement.getName());
         this.placement = placement;
+        this.verifier = placement.getSchematicVerifier();
+
+        SchematicVerifier verifier = placement.getSchematicVerifier();
+
+        if (verifier != verifierLast)
+        {
+            Minecraft mc = Minecraft.getMinecraft();
+            WidgetSchematicVerificationResult.setMaxNameLengths(verifier.getMismatchOverviewCombined(), mc);
+            verifierLast = verifier;
+        }
     }
 
     @Override
@@ -57,14 +66,11 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
     @Override
     public void initGui()
     {
-        WidgetSchematicVerificationResult.resetNameLengths();
-
         super.initGui();
 
         int x = 12;
         int y = 20;
         int buttonWidth;
-        this.id = 0;
         String label;
         ButtonGeneric button;
 
@@ -85,11 +91,31 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
         x += this.createButton(x, y, -1, ButtonListener.Type.SET_RESULT_MODE_CORRECT) + 4;
 
         y = this.height - 36;
+
+        if (this.verifier.isActive())
+        {
+            String str = I18n.format("litematica.gui.label.schematic_verifier.status.verifying", this.verifier.getUnseenChunks(), this.verifier.getTotalChunks());
+            this.addLabel(12, y, 100, 12, 0xFFF0F0F0, str);
+        }
+        else if (this.verifier.isFinished())
+        {
+            Integer wb = this.verifier.getMismatchedBlocks();
+            Integer ws = this.verifier.getMismatchedStates();
+            Integer m = this.verifier.getMissingBlocks();
+            Integer e = this.verifier.getExtraBlocks();
+            Integer c = this.verifier.getCorrectStatesCount();
+            Integer t = this.verifier.getSchematicTotalBlocks();
+            String str = I18n.format("litematica.gui.label.schematic_verifier.status.done_errors", wb, ws, m, e);
+            this.addLabel(12, y, 100, 12, 0xFFF0F0F0, str);
+            str = I18n.format("litematica.gui.label.schematic_verifier.status.done_correct_total", c, t);
+            this.addLabel(12, y + 14, 100, 12, 0xFFF0F0F0, str);
+        }
+
         ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
         label = I18n.format(type.getLabelKey());
         buttonWidth = this.fontRenderer.getStringWidth(label) + 20;
         x = this.width - buttonWidth - 10;
-        button = new ButtonGeneric(this.id++, x, y, buttonWidth, 20, label);
+        button = new ButtonGeneric(x, y, buttonWidth, 20, label);
         this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
     }
 
@@ -132,27 +158,26 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
                 break;
 
             case START:
-                if (this.placement.getSchematicVerifier().isPaused())
+                if (this.verifier.isPaused())
                 {
                     label = I18n.format("litematica.gui.button.schematic_verifier.resume");
                 }
                 else
                 {
                     label = I18n.format("litematica.gui.button.schematic_verifier.start");
-                    enabled = this.placement.getSchematicVerifier().isActive() == false;
+                    enabled = this.verifier.isActive() == false;
                 }
                 break;
 
             case STOP:
                 label = I18n.format("litematica.gui.button.schematic_verifier.stop");
-                enabled = this.placement.getSchematicVerifier().isActive();
+                enabled = this.verifier.isActive();
                 break;
 
             case RESET_VERIFIER:
             {
                 label = I18n.format("litematica.gui.button.schematic_verifier.reset_verifier");
-                SchematicVerifier verifier = this.placement.getSchematicVerifier();
-                enabled = verifier.isActive() || verifier.isPaused() || verifier.isFinished();
+                enabled = this.verifier.isActive() || this.verifier.isPaused() || this.verifier.isFinished();
                 break;
             }
 
@@ -165,16 +190,14 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
 
             case RESET_IGNORED:
                 label = I18n.format("litematica.gui.button.schematic_verifier.reset_ignored");
-                enabled = this.placement.getSchematicVerifier().getIgnoredMismatches().size() > 0;
+                enabled = this.verifier.getIgnoredMismatches().size() > 0;
                 break;
 
             case TOGGLE_INFO_HUD:
             {
-                boolean val = InfoHud.getInstance().isEnabled();
+                boolean val = InfoHud.getInstance().isEnabled() && this.verifier.getShouldRenderText(RenderPhase.POST);
                 String str = (val ? TXT_GREEN : TXT_RED) + I18n.format("litematica.message.value." + (val ? "on" : "off")) + TXT_RST;
                 label = I18n.format("litematica.gui.button.schematic_verifier.toggle_info_hud", str);
-                //int buttonWidth = this.mc.fontRenderer.getStringWidth(label);
-                //x = this.width - buttonWidth + 10;
                 break;
             }
 
@@ -186,7 +209,7 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
             width = this.mc.fontRenderer.getStringWidth(label) + 10;
         }
 
-        ButtonGeneric button = new ButtonGeneric(this.id++, x, y, width, 20, label);
+        ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);
         button.enabled = enabled;
         this.addButton(button, listener);
 
@@ -213,6 +236,8 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
     {
         if (this.mc.currentScreen == this)
         {
+            SchematicVerifier verifier = this.verifier;
+            WidgetSchematicVerificationResult.setMaxNameLengths(verifier.getMismatchOverviewCombined(), this.mc);
             this.initGui();
         }
     }
@@ -222,31 +247,20 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
     {
         if (entry != null)
         {
-            SchematicVerifier verifier = this.placement.getSchematicVerifier();
-
-            // Clear the selection when clicking again on the selected entry
-            if (this.selectedDataEntry == entry)
-            {
-                this.selectedDataEntry = null;
-                this.getListWidget().clearSelection();
-                this.placement.getSchematicVerifier().clearActiveMismatchRenderPositions();
-            }
             // Main header - show the currently missing/unseen chunks
-            else if (entry.type == BlockMismatchEntry.Type.HEADER)
+            if (entry.type == BlockMismatchEntry.Type.HEADER)
             {
-                verifier.updateRequiredChunksStringList();
+                this.verifier.updateRequiredChunksStringList();
             }
             // Category title - show all mismatches of that type
             else if (entry.type == BlockMismatchEntry.Type.CATEGORY_TITLE)
             {
-                this.selectedDataEntry = entry;
-                verifier.updateMismatchOverlaysForType(entry.mismatchType, null);
+                this.verifier.toggleMismatchCategorySelected(entry.mismatchType);
             }
             // A specific mismatch pair - show only those state pairs
             else if (entry.type == BlockMismatchEntry.Type.DATA)
             {
-                this.selectedDataEntry = entry;
-                verifier.updateMismatchOverlaysForType(entry.mismatchType, entry.blockMismatch);
+                this.verifier.toggleMismatchEntrySelected(entry.blockMismatch);
             }
         }
     }
@@ -300,6 +314,57 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
             this.blockMismatch = blockMismatch;
             this.header1 = null;
             this.header2 = null;
+        }
+
+        @Override
+        public int hashCode()
+        {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((blockMismatch == null) ? 0 : blockMismatch.hashCode());
+            result = prime * result + ((header1 == null) ? 0 : header1.hashCode());
+            result = prime * result + ((header2 == null) ? 0 : header2.hashCode());
+            result = prime * result + ((mismatchType == null) ? 0 : mismatchType.hashCode());
+            result = prime * result + ((type == null) ? 0 : type.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            BlockMismatchEntry other = (BlockMismatchEntry) obj;
+            if (blockMismatch == null)
+            {
+                if (other.blockMismatch != null)
+                    return false;
+            }
+            else if (!blockMismatch.equals(other.blockMismatch))
+                return false;
+            if (header1 == null)
+            {
+                if (other.header1 != null)
+                    return false;
+            }
+            else if (!header1.equals(other.header1))
+                return false;
+            if (header2 == null)
+            {
+                if (other.header2 != null)
+                    return false;
+            }
+            else if (!header2.equals(other.header2))
+                return false;
+            if (mismatchType != other.mismatchType)
+                return false;
+            if (type != other.type)
+                return false;
+            return true;
         }
 
         public enum Type
@@ -362,9 +427,9 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
 
                     if (world != null)
                     {
-                        SchematicVerifier verifier = this.parent.placement.getSchematicVerifier();
+                        SchematicVerifier verifier = this.parent.verifier;
 
-                        if (this.parent.placement.getSchematicVerifier().isPaused())
+                        if (this.parent.verifier.isPaused())
                         {
                             verifier.resume();
                         }
@@ -377,32 +442,41 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
                     {
                         this.parent.addMessage(MessageType.ERROR, "litematica.error.generic.schematic_world_not_loaded");
                     }
+                    verifierLast = null; // force re-calculating the column lengths
                     break;
 
                 case STOP:
-                    this.parent.placement.getSchematicVerifier().stopVerification();
-                    DataManager.removeSchematicVerificationTask();
+                    this.parent.verifier.stopVerification();
                     break;
 
                 case RESET_VERIFIER:
-                    this.parent.placement.getSchematicVerifier().reset();
-                    DataManager.removeSchematicVerificationTask();
+                    this.parent.verifier.reset();
                     break;
 
                 case SET_LIST_TYPE:
-                    this.parent.placement.getSchematicVerifier().reset();
-                    DataManager.removeSchematicVerificationTask();
                     SchematicPlacement placement = this.parent.placement;
+                    this.parent.verifier.reset();
                     BlockInfoListType type = placement.getSchematicVerifierType();
                     placement.setSchematicVerifierType((BlockInfoListType) type.cycle(mouseButton == 0));
                     break;
 
                 case RESET_IGNORED:
-                    this.parent.placement.getSchematicVerifier().setIgnoredStateMismatches(Collections.emptyList());
+                    this.parent.verifier.resetIgnoredStateMismatches();
                     break;
 
                 case TOGGLE_INFO_HUD:
-                    InfoHud.getInstance().toggleEnabled();
+                    SchematicVerifier verifier = this.parent.verifier;
+                    verifier.toggleShouldRenderInfoHUD();
+
+                    if (verifier.getShouldRenderText(RenderPhase.POST))
+                    {
+                        InfoHud.getInstance().addInfoHudRenderer(verifier, true);
+                    }
+                    else
+                    {
+                        InfoHud.getInstance().removeInfoHudRenderer(verifier, false);
+                    }
+
                     break;
             }
 

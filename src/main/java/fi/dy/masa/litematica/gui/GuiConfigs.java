@@ -6,6 +6,7 @@ import fi.dy.masa.litematica.Reference;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
+import fi.dy.masa.litematica.util.SchematicWorldRefresher;
 import fi.dy.masa.malilib.config.IConfigBase;
 import fi.dy.masa.malilib.gui.GuiConfigsBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
@@ -15,8 +16,6 @@ import net.minecraft.client.resources.I18n;
 
 public class GuiConfigs extends GuiConfigsBase
 {
-    private int id;
-
     public GuiConfigs()
     {
         super(10, 50, Reference.MOD_ID, null);
@@ -30,34 +29,30 @@ public class GuiConfigs extends GuiConfigsBase
         super.initGui();
         this.clearOptions();
 
-        this.id = 0;
+        if (DataManager.getConfigGuiTab() == ConfigGuiTab.RENDER_LAYERS)
+        {
+            this.mc.displayGuiScreen(new GuiRenderLayer());
+            return;
+        }
+
         int x = 10;
         int y = 26;
 
-        x += this.createButton(x, y, -1, ConfigGuiTab.GENERIC) + 4;
-        x += this.createButton(x, y, -1, ConfigGuiTab.INFO_OVERLAYS) + 4;
-        x += this.createButton(x, y, -1, ConfigGuiTab.VISUALS) + 4;
-        x += this.createButton(x, y, -1, ConfigGuiTab.COLORS) + 4;
-        x += this.createButton(x, y, -1, ConfigGuiTab.HOTKEYS) + 4;
-        x += this.createButton(x, y, -1, ConfigGuiTab.RENDER_LAYERS) + 4;
+        x += this.createButton(x, y, -1, ConfigGuiTab.GENERIC);
+        x += this.createButton(x, y, -1, ConfigGuiTab.INFO_OVERLAYS);
+        x += this.createButton(x, y, -1, ConfigGuiTab.VISUALS);
+        x += this.createButton(x, y, -1, ConfigGuiTab.COLORS);
+        x += this.createButton(x, y, -1, ConfigGuiTab.HOTKEYS);
+        x += this.createButton(x, y, -1, ConfigGuiTab.RENDER_LAYERS);
     }
 
     private int createButton(int x, int y, int width, ConfigGuiTab tab)
     {
-        ButtonListener listener = new ButtonListener(tab, this);
-        boolean enabled = DataManager.getConfigGuiTab() != tab;
-        String label = tab.getDisplayName();
+        ButtonGeneric button = new ButtonGeneric(x, y, width, 20, tab.getDisplayName());
+        button.enabled = DataManager.getConfigGuiTab() != tab;
+        this.addButton(button, new ButtonListener(tab, this));
 
-        if (width < 0)
-        {
-            width = this.mc.fontRenderer.getStringWidth(label) + 10;
-        }
-
-        ButtonGeneric button = new ButtonGeneric(this.id++, x, y, width, 20, label);
-        button.enabled = enabled;
-        this.addButton(button, listener);
-
-        return width;
+        return button.getButtonWidth() + 2;
     }
 
     @Override
@@ -75,6 +70,12 @@ public class GuiConfigs extends GuiConfigsBase
         }
 
         return super.getConfigWidth();
+    }
+
+    @Override
+    protected boolean useKeybindSearch()
+    {
+        return DataManager.getConfigGuiTab() == ConfigGuiTab.HOTKEYS;
     }
 
     @Override
@@ -109,6 +110,14 @@ public class GuiConfigs extends GuiConfigsBase
         }
 
         return ConfigOptionWrapper.createFor(configs);
+    }
+
+    @Override
+    protected void onSettingsChanged()
+    {
+        super.onSettingsChanged();
+
+        SchematicWorldRefresher.INSTANCE.updateAll();
     }
 
     private static class ButtonListener implements IButtonActionListener<ButtonGeneric>

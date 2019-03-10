@@ -1,10 +1,9 @@
 package fi.dy.masa.litematica.gui.widgets;
 
 import java.io.File;
-import java.util.Collections;
+import java.io.FileFilter;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.tuple.Pair;
@@ -25,6 +24,8 @@ import net.minecraft.util.math.Vec3i;
 
 public class WidgetSchematicBrowser extends WidgetFileBrowserBase
 {
+    protected static final FileFilter SCHEMATIC_FILTER = new FileFilterSchematics();
+
     protected final Map<File, SchematicMetadata> cachedMetadata = new HashMap<>();
     protected final Map<File, Pair<ResourceLocation, DynamicTexture>> cachedPreviewImages = new HashMap<>();
     protected final GuiSchematicBrowserBase parent;
@@ -71,20 +72,15 @@ public class WidgetSchematicBrowser extends WidgetFileBrowserBase
     }
 
     @Override
-    protected void addFileEntriesToList(File dir, List<DirectoryEntry> list)
+    protected FileFilter getFileFilter()
     {
-        for (File file : dir.listFiles(SCHEMATIC_FILTER))
-        {
-            list.add(new DirectoryEntry(DirectoryEntryType.fromFile(file), dir, file.getName()));
-        }
-
-        Collections.sort(list);
+        return SCHEMATIC_FILTER;
     }
 
     @Override
     protected void drawAdditionalContents(int mouseX, int mouseY)
     {
-        this.drawSelectedSchematicInfo(this.getSelectedEntry());
+        this.drawSelectedSchematicInfo(this.getLastSelectedEntry());
     }
 
     protected void drawSelectedSchematicInfo(@Nullable DirectoryEntry entry)
@@ -185,16 +181,20 @@ public class WidgetSchematicBrowser extends WidgetFileBrowserBase
         File file = new File(entry.getDirectory(), entry.getName());
         SchematicMetadata meta = this.cachedMetadata.get(file);
 
-        if (meta == null)
+        if (meta == null && this.cachedMetadata.containsKey(file) == false)
         {
-            LitematicaSchematic schematic = LitematicaSchematic.createFromFile(entry.getDirectory(), entry.getName(), this);
-
-            if (schematic != null)
+            if (entry.getName().endsWith(LitematicaSchematic.FILE_EXTENSION))
             {
-                meta = schematic.getMetadata();
-                this.cachedMetadata.put(file, meta);
-                this.createPreviewImage(file, meta);
+                LitematicaSchematic schematic = LitematicaSchematic.createFromFile(entry.getDirectory(), entry.getName());
+
+                if (schematic != null)
+                {
+                    meta = schematic.getMetadata();
+                    this.createPreviewImage(file, meta);
+                }
             }
+
+            this.cachedMetadata.put(file, meta);
         }
 
         return meta;
@@ -228,6 +228,18 @@ public class WidgetSchematicBrowser extends WidgetFileBrowserBase
             catch (Exception e)
             {
             }
+        }
+    }
+
+    public static class FileFilterSchematics implements FileFilter
+    {
+        @Override
+        public boolean accept(File pathName)
+        {
+            String name = pathName.getName();
+            return  name.endsWith(".litematic") ||
+                    name.endsWith(".schematic") ||
+                    name.endsWith(".nbt");
         }
     }
 }
