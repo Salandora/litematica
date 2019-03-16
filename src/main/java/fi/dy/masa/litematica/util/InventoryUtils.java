@@ -5,6 +5,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockChest;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -58,11 +59,11 @@ public class InventoryUtils
         if (te instanceof IInventory)
         {
             inv = (IInventory) te;
-            Block block = world.getBlockState(pos).getBlock();
+            IBlockState state = world.getBlockState(pos);
 
-            if (block instanceof BlockChest)
+            if (state.getBlock() instanceof BlockChest)
             {
-                ILockableContainer cont = ((BlockChest) block).getLockableContainer(world, pos);
+                ILockableContainer cont = ((BlockChest) state.getBlock()).getContainer(state, world, pos, true);
 
                 if (cont instanceof InventoryLargeChest)
                 {

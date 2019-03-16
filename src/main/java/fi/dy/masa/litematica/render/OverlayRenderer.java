@@ -147,7 +147,7 @@ public class OverlayRenderer
             if (renderAreas)
             {
                 GlStateManager.enablePolygonOffset();
-                GlStateManager.doPolygonOffset(-1.2f, -0.2f);
+                GlStateManager.polygonOffset(-1.2f, -0.2f);
                 GlStateManager.depthMask(false);
 
                 Box currentBox = currentSelection.getSelectedSubRegionBox();
@@ -167,7 +167,7 @@ public class OverlayRenderer
                 }
 
                 GlStateManager.depthMask(true);
-                GlStateManager.doPolygonOffset(0f, 0f);
+                GlStateManager.polygonOffset(0f, 0f);
                 GlStateManager.disablePolygonOffset();
             }
 
@@ -348,7 +348,7 @@ public class OverlayRenderer
             {
                 List<BlockPos> posList = verifier.getSelectedMismatchBlockPositionsForRender();
                 RayTraceResult trace = RayTraceUtils.traceToPositions(posList, this.mc.player, 128);
-                BlockPos posLook = trace != null && trace.typeOfHit == RayTraceResult.Type.BLOCK ? trace.getBlockPos() : null;
+                BlockPos posLook = trace != null && trace.type == RayTraceResult.Type.BLOCK ? trace.getBlockPos() : null;
                 this.renderSchematicMismatches(list, posLook, partialTicks);
             }
         }
@@ -362,7 +362,7 @@ public class OverlayRenderer
         GlStateManager.disableTexture2D();
         GlStateManager.pushMatrix();
 
-        GlStateManager.glLineWidth(2f);
+        GlStateManager.lineWidth(2f);
 
         EntityPlayer player = this.mc.player;
         Tessellator tessellator = Tessellator.getInstance();
@@ -403,7 +403,7 @@ public class OverlayRenderer
             tessellator.draw();
             buffer.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
 
-            GlStateManager.glLineWidth(6f);
+            GlStateManager.lineWidth(6f);
             RenderUtils.drawBlockBoundingBoxOutlinesBatchedLines(lookPos, lookedEntry.type.getColor(), 0.002, buffer, player, partialTicks);
         }
 
@@ -533,10 +533,10 @@ public class OverlayRenderer
         BlockPos pos = traceWrapper.getRayTraceResult().getBlockPos();
 
         IBlockState stateClient = mc.world.getBlockState(pos);
-        stateClient = stateClient.getActualState(mc.world, pos);
+        //stateClient = stateClient.getActualState(mc.world, pos);
 
         IBlockState stateSchematic = worldSchematic.getBlockState(pos);
-        stateSchematic = stateSchematic.getActualState(worldSchematic, pos);
+        //stateSchematic = stateSchematic.getActualState(worldSchematic, pos);
 
         int offY = Configs.InfoOverlays.BLOCK_INFO_OVERLAY_OFFSET_Y.getIntegerValue();
         BlockInfoAlignment align = (BlockInfoAlignment) Configs.InfoOverlays.BLOCK_INFO_OVERLAY_ALIGNMENT.getOptionListValue();
@@ -586,7 +586,7 @@ public class OverlayRenderer
 
     protected void getOverlayPosition(int width, int height, int offY, int invHeight, Minecraft mc)
     {
-        ScaledResolution sr = new ScaledResolution(mc);
+        MainWindow sr = mc.mainWindow;
         BlockInfoAlignment align = (BlockInfoAlignment) Configs.InfoOverlays.BLOCK_INFO_OVERLAY_ALIGNMENT.getOptionListValue();
 
         switch (align)
@@ -697,7 +697,7 @@ public class OverlayRenderer
 
     public void renderPreviewFrame(Minecraft mc)
     {
-        ScaledResolution sr = new ScaledResolution(mc);
+        MainWindow sr = mc.mainWindow;
         int width = sr.getScaledWidth();
         int height = sr.getScaledHeight();
         int x = width >= height ? (width - height) / 2 : 0;

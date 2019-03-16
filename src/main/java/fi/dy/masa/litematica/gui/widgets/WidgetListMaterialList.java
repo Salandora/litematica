@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.registry.IRegistry;
 
 public class WidgetListMaterialList extends WidgetListBase<MaterialListEntry, WidgetMaterialListEntry>
 {
@@ -29,7 +30,7 @@ public class WidgetListMaterialList extends WidgetListBase<MaterialListEntry, Wi
 
         this.browserEntryHeight = 22;
         this.gui = parent;
-        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 8, width - 16, 14, 1, 0, Icons.FILE_ICON_SEARCH, LeftRight.RIGHT, Minecraft.getMinecraft());
+        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 8, width - 16, 14, 1, 0, Icons.FILE_ICON_SEARCH, LeftRight.RIGHT, Minecraft.getInstance());
         this.sorter = new MaterialListSorter(parent.getMaterialList());
         this.shouldSortList = true;
 
@@ -79,10 +80,10 @@ public class WidgetListMaterialList extends WidgetListBase<MaterialListEntry, Wi
     protected boolean entryMatchesFilter(MaterialListEntry entry, String filterText)
     {
         ItemStack stack = entry.getStack();
-        ResourceLocation rl = Item.REGISTRY.getNameForObject(stack.getItem());
+        ResourceLocation rl = IRegistry.ITEM.getKey(stack.getItem());
         String regName = rl != null ? rl.toString() : "";
 
-        return stack.getDisplayName().toLowerCase().indexOf(filterText) != -1 ||
+        return stack.getDisplayName().getString().toLowerCase().indexOf(filterText) != -1 ||
                regName.indexOf(filterText) != -1;
     }
 

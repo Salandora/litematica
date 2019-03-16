@@ -163,7 +163,7 @@ public class GuiMaterialList extends GuiListBase<MaterialListEntry, WidgetMateri
 
         this.addButton(button, listener);
 
-        return button.getButtonWidth();
+        return button.getWidth();
     }
 
     private int createButtonOnOff(int x, int y, int width, boolean isCurrentlyOn, ButtonListener.Type type)
@@ -280,7 +280,7 @@ public class GuiMaterialList extends GuiListBase<MaterialListEntry, WidgetMateri
                 int total = entry.getCountTotal() * multiplier;
                 int missing = multiplier > 1 ? total : entry.getCountMissing();
                 int available = entry.getCountAvailable();
-                dump.addData(entry.getStack().getDisplayName(), String.valueOf(total), String.valueOf(missing), String.valueOf(available));
+                dump.addData(entry.getStack().getDisplayName().getString(), String.valueOf(total), String.valueOf(missing), String.valueOf(available));
             }
 
             String titleTotal = multiplier > 1 ? String.format("Total (x%d)", multiplier) : "Total";

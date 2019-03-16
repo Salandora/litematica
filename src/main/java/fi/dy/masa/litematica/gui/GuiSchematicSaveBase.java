@@ -42,7 +42,10 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
     {
         super.initGui();
 
-        ((IGuiTextField) this.textField).setInternalWidth(this.width - 273);
+        this.textField = new GuiTextFieldGeneric(10, 32, this.width - 273, 20, mc.fontRenderer);
+        this.textField.setMaxStringLength(256);
+        this.textField.setFocused(true);
+
         DirectoryEntry entry = this.getListWidget().getLastSelectedEntry();
 
         if (entry != null && entry.getType() != DirectoryEntryType.DIRECTORY)

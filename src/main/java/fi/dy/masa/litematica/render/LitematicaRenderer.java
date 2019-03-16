@@ -1,12 +1,13 @@
 package fi.dy.masa.litematica.render;
 
 import javax.annotation.Nullable;
+
+import fi.dy.masa.malilib.render.shader.ShaderProgram;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.render.schematic.WorldRendererSchematic;
-import fi.dy.masa.litematica.render.shader.ShaderProgram;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GlStateManager;
@@ -24,7 +25,7 @@ public class LitematicaRenderer
 
     private static final ShaderProgram SHADER_ALPHA = new ShaderProgram("litematica", null, "shaders/alpha.frag");
     private Minecraft mc;
-    private RenderGlobalSchematic worldRenderer;
+    private WorldRendererSchematic worldRenderer;
     private int frameCount;
     private long finishTimeNano;
 
@@ -41,12 +42,12 @@ public class LitematicaRenderer
         return INSTANCE;
     }
 
-    public RenderGlobalSchematic getWorldRenderer()
+    public WorldRendererSchematic getWorldRenderer()
     {
         if (this.worldRenderer == null)
         {
             this.mc = Minecraft.getInstance();
-            this.worldRenderer = new RenderGlobalSchematic(this.mc);
+            this.worldRenderer = new WorldRendererSchematic(this.mc);
         }
 
         return this.worldRenderer;
@@ -91,7 +92,7 @@ public class LitematicaRenderer
             }
 
             GlStateManager.pushMatrix();
-            GlStateManager.enableDepth();
+            GlStateManager.enableDepthTest();
 
             this.calculateFinishTime();
             this.renderWorld(partialTicks, this.finishTimeNano);
@@ -115,7 +116,7 @@ public class LitematicaRenderer
         this.mc.profiler.endStartSection("litematica_prepare_terrain");
         this.mc.getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
         RenderHelper.disableStandardItemLighting();
-        RenderGlobalSchematic renderGlobal = this.getWorldRenderer();
+        WorldRendererSchematic renderGlobal = this.getWorldRenderer();
 
         this.mc.profiler.endStartSection("litematica_terrain_setup");
         worldRenderer.setupTerrain(entity, partialTicks, icamera, this.frameCount++, this.mc.player.isSpectator());
@@ -140,7 +141,7 @@ public class LitematicaRenderer
 
             this.startShaderIfEnabled();
 
-            GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            GlStateManager.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
             renderGlobal.renderBlockLayer(BlockRenderLayer.SOLID, partialTicks, entity);
 
             renderGlobal.renderBlockLayer(BlockRenderLayer.CUTOUT_MIPPED, partialTicks, entity);
@@ -200,7 +201,7 @@ public class LitematicaRenderer
         this.mc.profiler.endStartSection("litematica_overlay");
         this.renderSchematicOverlay();
 
-        GlStateManager.enableAlpha();
+        GlStateManager.enableAlphaTest();
         GlStateManager.disableBlend();
         GlStateManager.depthMask(true);
         GlStateManager.shadeModel(GL11.GL_FLAT);
@@ -223,10 +224,10 @@ public class LitematicaRenderer
             GlStateManager.enablePolygonOffset();
             GlStateManager.polygonOffset(-0.4f, -0.8f);
             GlStateManager.enableBlend();
-            GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-            GlStateManager.glLineWidth(lineWidth);
-            GlStateManager.color(1f, 1f, 1f, 1f);
-            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240, 240);
+            GlStateManager.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+            GlStateManager.lineWidth(lineWidth);
+            GlStateManager.color4f(1f, 1f, 1f, 1f);
+            OpenGlHelper.glMultiTexCoord2f(OpenGlHelper.GL_TEXTURE1, 240, 240);
 
             if (renderThrough)
             {
@@ -284,7 +285,7 @@ public class LitematicaRenderer
             ICamera icamera = this.createCamera(entity, partialTicks);
 
             this.calculateFinishTime();
-            RenderGlobalSchematic renderGlobal = this.getWorldRenderer();
+            WorldRendererSchematic renderGlobal = this.getWorldRenderer();
 
             this.mc.profiler.endStartSection("litematica_terrain_setup");
             renderGlobal.setupTerrain(entity, partialTicks, icamera, this.frameCount++, this.mc.player.isSpectator());
@@ -307,7 +308,7 @@ public class LitematicaRenderer
             if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
             {
                 GlStateManager.enablePolygonOffset();
-                GlStateManager.doPolygonOffset(-0.3f, -0.6f);
+                GlStateManager.polygonOffset(-0.3f, -0.6f);
             }
 
             this.startShaderIfEnabled();
@@ -318,7 +319,7 @@ public class LitematicaRenderer
 
             if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
             {
-                GlStateManager.doPolygonOffset(0f, 0f);
+                GlStateManager.polygonOffset(0f, 0f);
                 GlStateManager.disablePolygonOffset();
             }
         }
@@ -333,7 +334,7 @@ public class LitematicaRenderer
             if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
             {
                 GlStateManager.enablePolygonOffset();
-                GlStateManager.doPolygonOffset(-0.3f, -0.6f);
+                GlStateManager.polygonOffset(-0.3f, -0.6f);
             }
 
             this.startShaderIfEnabled();
@@ -344,7 +345,7 @@ public class LitematicaRenderer
 
             if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
             {
-                GlStateManager.doPolygonOffset(0f, 0f);
+                GlStateManager.polygonOffset(0f, 0f);
                 GlStateManager.disablePolygonOffset();
             }
         }
@@ -359,7 +360,7 @@ public class LitematicaRenderer
             if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
             {
                 GlStateManager.enablePolygonOffset();
-                GlStateManager.doPolygonOffset(-0.3f, -0.6f);
+                GlStateManager.polygonOffset(-0.3f, -0.6f);
             }
 
             this.startShaderIfEnabled();
@@ -370,7 +371,7 @@ public class LitematicaRenderer
 
             if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
             {
-                GlStateManager.doPolygonOffset(0f, 0f);
+                GlStateManager.polygonOffset(0f, 0f);
                 GlStateManager.disablePolygonOffset();
             }
 
@@ -389,7 +390,7 @@ public class LitematicaRenderer
                 if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
                 {
                     GlStateManager.enablePolygonOffset();
-                    GlStateManager.doPolygonOffset(-0.3f, -0.6f);
+                    GlStateManager.polygonOffset(-0.3f, -0.6f);
                 }
 
                 this.startShaderIfEnabled();
@@ -400,7 +401,7 @@ public class LitematicaRenderer
 
                 if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
                 {
-                    GlStateManager.doPolygonOffset(0f, 0f);
+                    GlStateManager.polygonOffset(0f, 0f);
                     GlStateManager.disablePolygonOffset();
                 }
             }
@@ -422,7 +423,7 @@ public class LitematicaRenderer
             this.mc.profiler.endStartSection("litematica_entities");
 
             GlStateManager.enableBlend();
-            GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            GlStateManager.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
             this.startShaderIfEnabled();
 

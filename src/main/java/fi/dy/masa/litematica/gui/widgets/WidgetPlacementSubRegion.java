@@ -70,7 +70,7 @@ public class WidgetPlacementSubRegion extends WidgetListEntryBase<SubRegionPlace
         ButtonOnOff button = ButtonOnOff.createOnOff(xRight, y, -1, true, type.getTranslationKey(), isCurrentlyOn);
         this.addButton(button, new ButtonListener(type, this));
 
-        return xRight - button.getButtonWidth() - 2;
+        return xRight - button.getWidth() - 2;
     }
 
     @Override

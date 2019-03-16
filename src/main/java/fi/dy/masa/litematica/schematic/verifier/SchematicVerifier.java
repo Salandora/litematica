@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
+
+import net.minecraft.init.Blocks;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import com.google.common.collect.ArrayListMultimap;
@@ -283,7 +285,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
     @Override
     public boolean canExecute()
     {
-        return Minecraft.getMinecraft().world != null;
+        return Minecraft.getInstance().world != null;
     }
 
     @Override
@@ -481,7 +483,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
                 {
                     for (int cz = pos.z - 1; cz <= pos.z + 1; ++cz)
                     {
-                        if (this.worldClient.getChunkProvider().isChunkGeneratedAt(cx, cz))
+                        if (this.worldClient.isChunkLoaded(cx, cz, false))
                         {
                             ++count;
                         }
@@ -489,8 +491,10 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
                 }
 
                 // Require the surrounding chunks in the client world to be loaded as well
-                if (count == 9 && this.worldSchematic.getChunkProvider().isChunkGeneratedAt(pos.x, pos.z))
+                if (count == 9 && this.worldSchematic.isChunkLoaded(pos.x, pos.z, false))
                 {
+                    Chunk chunkClient = this.worldClient.getChunk(pos.x, pos.z);
+                    Chunk chunkSchematic = this.worldSchematic.getChunk(pos.x, pos.z);
                     Map<String, MutableBoundingBox> boxes = this.schematicPlacement.getBoxesWithinChunk(pos.x, pos.z);
 
                     for (MutableBoundingBox box : boxes.values())
@@ -769,7 +773,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
 
     private void updateMismatchOverlays()
     {
-        Minecraft mc = Minecraft.getMinecraft();
+        Minecraft mc = Minecraft.getInstance();
 
         if (mc.player != null)
         {
@@ -952,7 +956,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
     /**
      * Prepares/caches the strings, and returns a provider for the data.<br>
      * <b>NOTE:</b> This is actually the instance of this class, there are no separate providers for different data types atm!
-     * @param type
+     * //@param type
      * @return
      */
     /*

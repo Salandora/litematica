@@ -239,14 +239,14 @@ public class PositionUtils
         return volume;
     }
 
-    public static ImmutableMap<String, StructureBoundingBox> getBoxesWithinChunk(int chunkX, int chunkZ, ImmutableMap<String, Box> subRegions)
+    public static ImmutableMap<String, MutableBoundingBox > getBoxesWithinChunk(int chunkX, int chunkZ, ImmutableMap<String, Box> subRegions)
     {
-        ImmutableMap.Builder<String, StructureBoundingBox> builder = new ImmutableMap.Builder<>();
+        ImmutableMap.Builder<String, MutableBoundingBox > builder = new ImmutableMap.Builder<>();
 
         for (Map.Entry<String, Box> entry : subRegions.entrySet())
         {
             Box box = entry.getValue();
-            StructureBoundingBox bb = box != null ? PositionUtils.getBoundsWithinChunkForBox(box, chunkX, chunkZ) : null;
+            MutableBoundingBox  bb = box != null ? PositionUtils.getBoundsWithinChunkForBox(box, chunkX, chunkZ) : null;
 
             if (bb != null)
             {
@@ -330,7 +330,7 @@ public class PositionUtils
         return createAABB(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
-    public static AxisAlignedBB createAABBFrom(StructureBoundingBox bb)
+    public static AxisAlignedBB createAABBFrom(MutableBoundingBox  bb)
     {
         return createAABB(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ);
     }

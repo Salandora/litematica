@@ -8,7 +8,7 @@ import fi.dy.masa.malilib.util.LayerRange;
 import fi.dy.masa.malilib.util.SubChunkPos;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
@@ -35,9 +35,9 @@ public class SchematicWorldRefresher implements IRangeChangeListener
             final int xMax = Math.max(minX, maxX);
             final int cxMin = (xMin >> 4);
             final int cxMax = (xMax >> 4);
-            RenderGlobal rg = LitematicaRenderer.getInstance().getWorldRenderer();
+            WorldRenderer rg = LitematicaRenderer.getInstance().getWorldRenderer();
             Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getMinecraft().world.getChunkProvider()).getLoadedChunks();
+            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
 
             for (Chunk chunk : schematicChunks.values())
             {
@@ -60,9 +60,9 @@ public class SchematicWorldRefresher implements IRangeChangeListener
 
         if (world != null)
         {
-            RenderGlobal rg = LitematicaRenderer.getInstance().getWorldRenderer();
+            WorldRenderer rg = LitematicaRenderer.getInstance().getWorldRenderer();
             Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getMinecraft().world.getChunkProvider()).getLoadedChunks();
+            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
 
             for (Chunk chunk : schematicChunks.values())
             {
@@ -86,9 +86,9 @@ public class SchematicWorldRefresher implements IRangeChangeListener
             final int zMax = Math.max(minZ, maxZ);
             final int czMin = (zMin >> 4);
             final int czMax = (zMax >> 4);
-            RenderGlobal rg = LitematicaRenderer.getInstance().getWorldRenderer();
+            WorldRenderer rg = LitematicaRenderer.getInstance().getWorldRenderer();
             Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getMinecraft().world.getChunkProvider()).getLoadedChunks();
+            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
 
             for (Chunk chunk : schematicChunks.values())
             {
@@ -111,12 +111,12 @@ public class SchematicWorldRefresher implements IRangeChangeListener
         if (world != null)
         {
             Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getMinecraft().world.getChunkProvider()).getLoadedChunks();
+            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
             long key = ChunkPos.asLong(chunkPos.getX(), chunkPos.getZ());
 
             if (schematicChunks.containsKey(key) && clientChunks.containsKey(key))
             {
-                RenderGlobal rg = LitematicaRenderer.getInstance().getWorldRenderer();
+                WorldRenderer rg = LitematicaRenderer.getInstance().getWorldRenderer();
                 rg.markBlockRangeForRenderUpdate((chunkPos.getX() << 4) - 1, (chunkPos.getY() << 4) - 1, (chunkPos.getZ() << 4) - 1,
                                                  (chunkPos.getX() << 4) + 1, (chunkPos.getY() << 4) + 1, (chunkPos.getZ() << 4) + 1);
             }
@@ -130,12 +130,12 @@ public class SchematicWorldRefresher implements IRangeChangeListener
         if (world != null)
         {
             Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getMinecraft().world.getChunkProvider()).getLoadedChunks();
+            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
             long key = ChunkPos.asLong(chunkPos.x, chunkPos.z);
 
             if (schematicChunks.containsKey(key) && clientChunks.containsKey(key))
             {
-                RenderGlobal rg = LitematicaRenderer.getInstance().getWorldRenderer();
+                WorldRenderer rg = LitematicaRenderer.getInstance().getWorldRenderer();
                 rg.markBlockRangeForRenderUpdate((chunkPos.x << 4) - 1,   0, (chunkPos.z << 4) - 1,
                                                  (chunkPos.x << 4) + 1, 255, (chunkPos.z << 4) + 1);
             }
@@ -149,12 +149,12 @@ public class SchematicWorldRefresher implements IRangeChangeListener
         if (world != null)
         {
             Long2ObjectMap<Chunk> schematicChunks = ((IMixinChunkProviderClient) (Object) world.getChunkProvider()).getLoadedChunks();
-            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getMinecraft().world.getChunkProvider()).getLoadedChunks();
+            Long2ObjectMap<Chunk> clientChunks = ((IMixinChunkProviderClient) (Object) Minecraft.getInstance().world.getChunkProvider()).getLoadedChunks();
             long key = ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4);
 
             if (schematicChunks.containsKey(key) && clientChunks.containsKey(key))
             {
-                RenderGlobal rg = LitematicaRenderer.getInstance().getWorldRenderer();
+                WorldRenderer rg = LitematicaRenderer.getInstance().getWorldRenderer();
                 rg.markBlockRangeForRenderUpdate(pos.getX() - 1, pos.getY() - 1, pos.getZ() - 1,pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
             }
         }

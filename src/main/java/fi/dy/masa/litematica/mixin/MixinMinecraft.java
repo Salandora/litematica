@@ -8,8 +8,8 @@ import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.util.WorldUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.multiplayer.WorldClient;
+
+import javax.annotation.Nullable;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft
@@ -27,42 +27,9 @@ public abstract class MixinMinecraft
         }
     }
 
-    @Inject(method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/gui/GuiScreen;)V", at = @At("HEAD"))
-    private void onLoadWorldPre(@Nullable WorldClient worldClientIn, GuiScreen loadingScreen, CallbackInfo ci)
-    {
-        // Save the settings before the integrated server gets shut down
-        if (Minecraft.getInstance().world != null)
-        {
-            DataManager.save();
-        }
-    }
-
-    @Inject(method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/gui/GuiScreen;)V", at = @At("RETURN"))
-    private void onLoadWorldPost(@Nullable WorldClient worldClientIn, GuiScreen loadingScreen, CallbackInfo ci)
-    {
-        SchematicWorldHandler.recreateSchematicWorld(worldClientIn == null);
-
-        if (worldClientIn != null)
-        {
-            DataManager.load();
-        }
-        else
-        {
-            SchematicHolder.getInstance().clearLoadedSchematics();
-            InfoHud.getInstance().reset(); // remove the line providers and clear the data
-            DataManager.removeSchematicVerificationTask();
-        }
-    }
-
     @Inject(method = "runTick()V", at = @At("HEAD"))
     private void onRunTickStart(CallbackInfo ci)
     {
         DataManager.onClientTickStart();
-    }
-
-    @Inject(method = "runTick()V", at = @At("RETURN"))
-    private void onRunTickEnd(CallbackInfo ci)
-    {
-        DataManager.runTasks();
     }
 }

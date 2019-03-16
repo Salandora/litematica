@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.Nullable;
+
+import net.minecraft.init.Blocks;
 import org.lwjgl.opengl.GL11;
 import com.google.common.collect.Sets;
 import fi.dy.masa.litematica.config.Configs;
@@ -31,7 +33,6 @@ import net.minecraft.client.renderer.tileentity.TileEntityRenderer;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexBuffer;
-import net.minecraft.fluid.IFluidState;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumBlockRenderType;
@@ -46,7 +47,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
 {
     public static int schematicRenderChunksUpdated;
 
-    private final RenderGlobalSchematic renderGlobal;
+    private final WorldRendererSchematic worldRenderer;
     private final VertexBuffer[] vertexBufferOverlay = new VertexBuffer[OverlayRenderType.values().length];
     private final Set<TileEntity> setTileEntities = new HashSet<>();
     private final List<MutableBoundingBox> boxes = new ArrayList<>();
@@ -60,7 +61,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
     private CompiledChunkSchematic compiledChunk;
     private Color4f overlayColor;
 
-    public RenderChunkSchematicVbo(World worldIn, RenderGlobal renderGlobalIn, int indexIn)
+    public RenderChunkSchematicVbo(World worldIn, WorldRenderer renderGlobalIn)
     {
         super(worldIn, renderGlobalIn);
 
@@ -247,7 +248,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
             set1.removeAll(tileEntities);
             this.setTileEntities.clear();
             this.setTileEntities.addAll(tileEntities);
-            this.renderGlobal.updateTileEntities(set1, set);
+            this.worldRenderer.updateTileEntities(set1, set);
         }
         finally
         {
@@ -259,8 +260,8 @@ public class RenderChunkSchematicVbo extends RenderChunk
     {
         IBlockState stateSchematic = this.schematicWorldView.getBlockState(pos);
         IBlockState stateClient    = this.clientWorldView.getBlockState(pos);
-        stateSchematic = stateSchematic.getActualState(this.schematicWorldView, pos);
-        stateClient = stateClient.getActualState(this.clientWorldView, pos);
+        //stateSchematic = stateSchematic.getActualState(this.schematicWorldView, pos);
+        //stateClient = stateClient.getActualState(this.clientWorldView, pos);
         Block blockSchematic = stateSchematic.getBlock();
         Block blockClient = stateClient.getBlock();
         boolean clientHasAir = blockClient == Blocks.AIR;
@@ -283,7 +284,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
             }
 
             // TODO change when the fluids become separate
-            IFluidState fluidState = stateSchematic.getFluidState();
+            /*IFluidState fluidState = stateSchematic.getFluidState();
 
             if (fluidState.isEmpty() == false)
             {
@@ -298,7 +299,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
                 }
 
                 usedLayers[layerIndex] |= this.worldRenderer.renderFluid(fluidState, posMutable, this.schematicWorldView, bufferSchematic);
-            }
+            }*/
 
             BlockRenderLayer layer = Configs.Visuals.RENDER_BLOCKS_AS_TRANSLUCENT.getBooleanValue() ? BlockRenderLayer.TRANSLUCENT : blockSchematic.getRenderLayer();
             int layerIndex = layer.ordinal();
@@ -313,7 +314,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
                     this.preRenderBlocks(bufferSchematic, this.getPosition());
                 }
 
-                usedLayers[layerIndex] |= this.renderGlobal.renderBlock(stateSchematic, pos, this.schematicWorldView, bufferSchematic);
+                usedLayers[layerIndex] |= this.worldRenderer.renderBlock(stateSchematic, pos, this.schematicWorldView, bufferSchematic);
 
                 if (clientHasAir)
                 {
@@ -363,7 +364,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
                     // Only render the model-based outlines or sides for missing blocks
                     if (missing && Configs.Visuals.SCHEMATIC_OVERLAY_MODEL_SIDES.getBooleanValue())
                     {
-                        IBakedModel bakedModel = this.renderGlobal.getModelForState(stateSchematic);
+                        IBakedModel bakedModel = this.worldRenderer.getModelForState(stateSchematic);
 
                         if (type.getRenderPriority() > typeAdj.getRenderPriority() ||
                             stateSchematic.getBlockFaceShape(this.schematicWorldView, pos, side) != BlockFaceShape.SOLID)
@@ -380,14 +381,14 @@ public class RenderChunkSchematicVbo extends RenderChunk
                     }
                 }
 
-                posMutable.release();
+                posMutable.close();
             }
             else
             {
                 // Only render the model-based outlines or sides for missing blocks
                 if (missing && Configs.Visuals.SCHEMATIC_OVERLAY_MODEL_SIDES.getBooleanValue())
                 {
-                    IBakedModel bakedModel = this.renderGlobal.getModelForState(stateSchematic);
+                    IBakedModel bakedModel = this.worldRenderer.getModelForState(stateSchematic);
                     RenderUtils.drawBlockModelQuadOverlayBatched(bakedModel, stateSchematic, pos, this.overlayColor, 0, bufferOverlayQuads);
                 }
                 else
@@ -435,12 +436,12 @@ public class RenderChunkSchematicVbo extends RenderChunk
                     }
                 }
 
-                posMutable.release();
+                posMutable.close();
 
                 // Only render the model-based outlines or sides for missing blocks
                 if (missing && Configs.Visuals.SCHEMATIC_OVERLAY_MODEL_OUTLINE.getBooleanValue())
                 {
-                    IBakedModel bakedModel = this.renderGlobal.getModelForState(stateSchematic);
+                    IBakedModel bakedModel = this.worldRenderer.getModelForState(stateSchematic);
 
                     // FIXME: how to implement this correctly here... >_>
                     if (stateSchematic.isFullCube())
@@ -462,7 +463,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
                 // Only render the model-based outlines or sides for missing blocks
                 if (missing && Configs.Visuals.SCHEMATIC_OVERLAY_MODEL_OUTLINE.getBooleanValue())
                 {
-                    IBakedModel bakedModel = this.renderGlobal.getModelForState(stateSchematic);
+                    IBakedModel bakedModel = this.worldRenderer.getModelForState(stateSchematic);
                     RenderUtils.drawBlockModelOutlinesBatched(bakedModel, stateSchematic, pos, this.overlayColor, 0, bufferOverlayOutlines);
                 }
                 else

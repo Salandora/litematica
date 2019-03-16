@@ -16,7 +16,7 @@ import net.minecraft.util.math.BlockPos;
 public class SchematicProjectsManager
 {
     //private static final Pattern PATTERN_NAME_NUMBER = Pattern.compile("(.*)([0-9]+)$");
-    private final Minecraft mc = Minecraft.getMinecraft();
+    private final Minecraft mc = Minecraft.getInstance();
 
     @Nullable
     private SchematicProject currentProject;

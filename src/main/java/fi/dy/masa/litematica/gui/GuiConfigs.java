@@ -52,7 +52,7 @@ public class GuiConfigs extends GuiConfigsBase
         button.enabled = DataManager.getConfigGuiTab() != tab;
         this.addButton(button, new ButtonListener(tab, this));
 
-        return button.getButtonWidth() + 2;
+        return button.getWidth() + 2;
     }
 
     @Override

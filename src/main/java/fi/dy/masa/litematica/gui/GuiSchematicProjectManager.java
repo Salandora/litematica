@@ -81,7 +81,7 @@ public class GuiSchematicProjectManager extends GuiListBase<SchematicVersion, Wi
 
         this.addButton(button, new ButtonListener(type, this));
 
-        return button.getButtonWidth() + 2;
+        return button.getWidth() + 2;
     }
 
     private void reCreateGuiElements()
@@ -251,7 +251,7 @@ public class GuiSchematicProjectManager extends GuiListBase<SchematicVersion, Wi
         @Override
         public boolean onActionConfirmed()
         {
-            DataManager.getSchematicProjectsManager().deleteLastSeenArea(Minecraft.getMinecraft());
+            DataManager.getSchematicProjectsManager().deleteLastSeenArea(Minecraft.getInstance());
             return true;
         }
 

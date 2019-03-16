@@ -388,7 +388,7 @@ public class KeyCallbacks
             {
                 if (EntityUtils.shouldPickBlock(this.mc.player))
                 {
-                    int keyCodeUse = this.mc.gameSettings.keyBindUseItem.getKeyCode();
+                    int keyCodeUse = ((IMixinKeyBinding)this.mc.gameSettings.keyBindUseItem).getInput().getKeyCode();
 
                     // Only do the pick block here, if it's not bound to the use button.
                     // If it's bound to the use button, then it will be done from the input handling.

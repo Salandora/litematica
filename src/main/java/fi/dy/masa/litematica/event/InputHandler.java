@@ -63,7 +63,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
             {
                 return this.handleUseKey(mc);
             }
-            else if (eventKey == mc.gameSettings.keyBindScreenshot.func_197984_a(eventKey) && GuiSchematicManager.hasPendingPreviewTask()
+            else if (mc.gameSettings.keyBindScreenshot.func_197984_a(eventKey) && GuiSchematicManager.hasPendingPreviewTask())
             {
                 return GuiSchematicManager.setPreviewImage();
             }
@@ -77,18 +77,17 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
     {
         Minecraft mc = Minecraft.getInstance();
 
-        if (mc.currentScreen == null && mc.world != null && mc.player != null &&
-            eventButtonState && mc.gameSettings.keyBindUseItem.func_197984_a(eventButton))
+        if (mc.currentScreen == null && mc.world != null && mc.player != null && eventButtonState)
         {
-            if (eventButtonState && eventButton == mc.gameSettings.keyBindUseItem.getKeyCode() + 100)
+            if (mc.gameSettings.keyBindUseItem.func_197984_a(eventButton))
             {
                 return this.handleUseKey(mc);
             }
-            else if (eventButtonState && eventButton == mc.gameSettings.keyBindAttack.getKeyCode() + 100)
+            else if (mc.gameSettings.keyBindAttack.func_197984_a(eventButton))
             {
                 return this.handleAttackKey(mc);
             }
-
+        }
         return false;
     }
 
@@ -232,7 +231,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
             }
             else if (Configs.Generic.PICK_BLOCK_ENABLED.getBooleanValue())
             {
-                int keyCodeUse = mc.gameSettings.keyBindUseItem.getKeyCode();
+                int keyCodeUse = ((IMixinKeyBinding) mc.gameSettings.keyBindUseItem).getInput().getKeyCode();
 
                 if (Hotkeys.PICK_BLOCK_LAST.getKeybind().matches(keyCodeUse))
                 {

@@ -108,7 +108,7 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
         for (int i = 0; i < size; ++i)
         {
             MaterialListEntry entry = list.get(i);
-            maxTextLength = Math.max(maxTextLength, font.getStringWidth(entry.getStack().getDisplayName()));
+            maxTextLength = Math.max(maxTextLength, font.getStringWidth(entry.getStack().getDisplayName().getString()));
             int multiplier = this.materialList.getMultiplier();
             int count = multiplier == 1 ? entry.getCountMissing() - entry.getCountAvailable() : entry.getCountTotal();
             count *= multiplier;
@@ -169,7 +169,7 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
         for (int i = 0; i < size; ++i)
         {
             MaterialListEntry entry = list.get(i);
-            String text = entry.getStack().getDisplayName();
+            String text = entry.getStack().getDisplayName().getString();
             int multiplier = this.materialList.getMultiplier();
             int count = multiplier == 1 ? entry.getCountMissing() - entry.getCountAvailable() : entry.getCountTotal();
             count *= multiplier;
@@ -196,12 +196,12 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
 
         GlStateManager.enableRescaleNormal();
         GlStateManager.enableBlend();
-        GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+        GlStateManager.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
         RenderHelper.enableGUIStandardItemLighting();
 
         for (int i = 0; i < size; ++i)
         {
-            mc.getRenderItem().renderItemAndEffectIntoGUI(mc.player, list.get(i).getStack(), x, y);
+            mc.getItemRenderer().renderItemAndEffectIntoGUI(mc.player, list.get(i).getStack(), x, y);
             y += lineHeight;
         }
 

@@ -27,7 +27,7 @@ public class WidgetListSchematicVersions extends WidgetListBase<SchematicVersion
         this.project = project;
         this.browserEntryHeight = 16;
         this.infoWidth = 180;
-        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 4, width - 14, 14, zLevel, 0, Icons.FILE_ICON_SEARCH, LeftRight.LEFT, Minecraft.getMinecraft());
+        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 4, width - 14, 14, zLevel, 0, Icons.FILE_ICON_SEARCH, LeftRight.LEFT, Minecraft.getInstance());
         this.browserEntriesOffsetY = this.widgetSearchBar.getHeight() + 3;
     }
 

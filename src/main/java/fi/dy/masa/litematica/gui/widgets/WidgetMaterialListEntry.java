@@ -97,7 +97,7 @@ public class WidgetMaterialListEntry extends WidgetListEntrySortable<MaterialLis
             int countTotal = entry.getCountTotal() * multiplier;
             int countMissing = multiplier == 1 ? entry.getCountMissing() : countTotal;
 
-            maxNameLength = Math.max(maxNameLength, font.getStringWidth(entry.getStack().getDisplayName()));
+            maxNameLength = Math.max(maxNameLength, font.getStringWidth(entry.getStack().getDisplayName().getString()));
             maxCountLength1 = Math.max(maxCountLength1, font.getStringWidth(String.valueOf(countTotal)));
             maxCountLength2 = Math.max(maxCountLength2, font.getStringWidth(String.valueOf(countMissing)));
             maxCountLength3 = Math.max(maxCountLength3, font.getStringWidth(String.valueOf(entry.getCountAvailable())));
@@ -228,7 +228,7 @@ public class WidgetMaterialListEntry extends WidgetListEntrySortable<MaterialLis
             String gold = GuiBase.TXT_GOLD;
             String red = GuiBase.TXT_RED;
             String pre;
-            mc.fontRenderer.drawString(this.entry.getStack().getDisplayName(), x1 + 20, y, color);
+            mc.fontRenderer.drawString(this.entry.getStack().getDisplayName().getString(), x1 + 20, y, color);
 
             mc.fontRenderer.drawString(String.valueOf(countTotal)          , x2, y, color);
 

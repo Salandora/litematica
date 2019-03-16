@@ -24,21 +24,22 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.command.arguments.BlockStateParser;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.MutableBoundingBox;
+import net.minecraft.util.registry.IRegistry;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.gen.structure.StructureBoundingBox;
 
 public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRenderer
 {
-    private final ArrayListMultimap<ChunkPos, StructureBoundingBox> boxesInChunks = ArrayListMultimap.create();
+    private final ArrayListMultimap<ChunkPos, MutableBoundingBox> boxesInChunks = ArrayListMultimap.create();
     private final List<String> infoHudLines = new ArrayList<>();
     private final int maxCommandsPerTick;
     private final boolean changedBlockOnly;
@@ -59,7 +60,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
 
         for (ChunkPos pos : touchedChunks)
         {
-            ImmutableCollection<StructureBoundingBox> boxes = placement.getBoxesWithinChunk(pos.x, pos.z).values();
+            ImmutableCollection<MutableBoundingBox> boxes = placement.getBoxesWithinChunk(pos.x, pos.z).values();
             this.boxesInChunks.putAll(pos, boxes);
         }
 
@@ -70,7 +71,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
     @Override
     public boolean canExecute()
     {
-        Minecraft mc = Minecraft.getMinecraft();
+        Minecraft mc = Minecraft.getInstance();
 
         // Only use this command-based task in multiplayer
         return this.boxesInChunks.isEmpty() == false && mc.world != null && mc.player != null && mc.isSingleplayer() == false;
@@ -85,7 +86,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
     @Override
     public boolean execute()
     {
-        Minecraft mc = Minecraft.getMinecraft();
+        Minecraft mc = Minecraft.getInstance();
         WorldSchematic worldSchematic = SchematicWorldHandler.getSchematicWorld();
         WorldClient worldClient = mc.world;
         this.sentCommandsThisTick = 0;
@@ -104,11 +105,11 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
             {
                 if (this.canProcessChunk(pos, worldSchematic, worldClient))
                 {
-                    List<StructureBoundingBox> boxes = this.boxesInChunks.get(pos);
+                    List<MutableBoundingBox> boxes = this.boxesInChunks.get(pos);
 
                     for (int i = 0; i < boxes.size(); ++i)
                     {
-                        StructureBoundingBox box = boxes.get(i);
+                        MutableBoundingBox box = boxes.get(i);
 
                         if (this.processBox(pos, box, worldSchematic, worldClient, mc.player))
                         {
@@ -147,7 +148,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
 
     protected boolean canProcessChunk(ChunkPos pos, World worldSchematic, World worldClient)
     {
-        if (worldSchematic.getChunkProvider().isChunkGeneratedAt(pos.x, pos.z) == false)
+        if (worldSchematic.isChunkLoaded(pos.x, pos.z, false) == false)
         {
             return false;
         }
@@ -156,7 +157,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         {
             for (int cz = pos.z - 1; cz <= pos.z + 1; ++cz)
             {
-                if (worldClient.getChunkProvider().isChunkGeneratedAt(cx, cz) == false)
+                if (worldClient.isChunkLoaded(cx, cz, false) == false)
                 {
                     return false;
                 }
@@ -167,7 +168,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         return true;
     }
 
-    protected boolean processBox(ChunkPos pos, StructureBoundingBox box,
+    protected boolean processBox(ChunkPos pos, MutableBoundingBox box,
             WorldSchematic worldSchematic, WorldClient worldClient, EntityPlayerSP player)
     {
         final int minX = box.minX;
@@ -177,8 +178,8 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         final int maxY = box.maxY;
         final int maxZ = box.maxZ;
         BlockPos.MutableBlockPos posMutable = new BlockPos.MutableBlockPos();
-        Chunk chunkSchematic = worldSchematic.getChunkProvider().getLoadedChunk(pos.x, pos.z);
-        Chunk chunkClient = worldClient.getChunkProvider().getLoadedChunk(pos.x, pos.z);
+        Chunk chunkSchematic = worldSchematic.getChunk(pos.x, pos.z);
+        Chunk chunkClient = worldClient.getChunk(pos.x, pos.z);
 
         if (this.boxInProgress == false)
         {
@@ -196,7 +197,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
                 {
                     posMutable.setPos(this.currentX, this.currentY, this.currentZ);
                     IBlockState stateSchematic = chunkSchematic.getBlockState(posMutable);
-                    IBlockState stateClient = chunkClient.getBlockState(posMutable).getActualState(worldClient, posMutable);
+                    IBlockState stateClient = chunkClient.getBlockState(posMutable); //.getActualState(worldClient, posMutable);
 
                     if (stateSchematic.getBlock() == Blocks.AIR && stateClient.getBlock() == Blocks.AIR)
                     {
@@ -236,14 +237,14 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         return true;
     }
 
-    private void summonEntities(StructureBoundingBox box, WorldSchematic worldSchematic, EntityPlayerSP player)
+    private void summonEntities(MutableBoundingBox box, WorldSchematic worldSchematic, EntityPlayerSP player)
     {
         AxisAlignedBB bb = new AxisAlignedBB(box.minX, box.minY, box.minZ, box.maxX + 1, box.maxY + 1, box.maxZ + 1);
         List<Entity> entities = worldSchematic.getEntitiesWithinAABBExcludingEntity(null, bb);
 
         for (Entity entity : entities)
         {
-            ResourceLocation rl = EntityList.getKey(entity);
+            ResourceLocation rl = IRegistry.ENTITY_TYPE.getKey(entity.getType());
 
             if (rl != null)
             {
@@ -270,16 +271,15 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
     private void sendSetBlockCommand(int x, int y, int z, IBlockState state, EntityPlayerSP player)
     {
         Block block = state.getBlock();
-        ResourceLocation rl = Block.REGISTRY.getNameForObject(block);
+        ResourceLocation rl = IRegistry.BLOCK.getKey(block);
 
         if (rl == null)
         {
             return;
         }
 
-        String blockName = rl.toString();
         String cmdName = Configs.Generic.PASTE_COMMAND_SETBLOCK.getStringValue();
-        String strCommand = String.format("/%s %d %d %d %s %d", cmdName, x, y, z, blockName, block.getMetaFromState(state));
+        String strCommand = String.format("/%s %d %d %d %s %d", cmdName, x, y, z, BlockStateParser.toString(state, null));
 
         player.sendChatMessage(strCommand);
         ++this.sentCommandsTotal;
@@ -297,7 +297,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
             InfoUtils.showGuiOrActionBarMessage(MessageType.ERROR, "litematica.message.error.schematic_paste_failed");
         }
 
-        EntityPlayerSP player = Minecraft.getMinecraft().player;
+        EntityPlayerSP player = Minecraft.getInstance().player;
 
         if (player != null)
         {
@@ -310,7 +310,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
     private void updateInfoHudLines()
     {
         this.infoHudLines.clear();
-        EntityPlayerSP player = Minecraft.getMinecraft().player;
+        EntityPlayerSP player = Minecraft.getInstance().player;
 
         if (player != null)
         {

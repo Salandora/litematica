@@ -30,9 +30,9 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.MutableBoundingBox;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
-import net.minecraft.world.gen.structure.StructureBoundingBox;
 
 public class TaskSaveSchematic extends TaskBase implements IInfoHudRenderer
 {
@@ -76,7 +76,7 @@ public class TaskSaveSchematic extends TaskBase implements IInfoHudRenderer
     @Override
     public boolean canExecute()
     {
-        return Minecraft.getMinecraft().world != null;
+        return Minecraft.getInstance().world != null;
     }
 
     @Override
@@ -88,7 +88,7 @@ public class TaskSaveSchematic extends TaskBase implements IInfoHudRenderer
     @Override
     public boolean execute()
     {
-        Minecraft mc = Minecraft.getMinecraft();
+        Minecraft mc = Minecraft.getInstance();
         World world = WorldUtils.getBestWorld(mc);
         World worldClient = mc.world;
 
@@ -108,7 +108,7 @@ public class TaskSaveSchematic extends TaskBase implements IInfoHudRenderer
                 {
                     for (int cz = chunkZ - 1; cz <= chunkZ + 1; ++cz)
                     {
-                        if (worldClient.getChunkProvider().isChunkGeneratedAt(cx, cz))
+                        if (worldClient.isChunkLoaded(cx, cz, false))
                         {
                             ++count;
                         }
@@ -118,7 +118,7 @@ public class TaskSaveSchematic extends TaskBase implements IInfoHudRenderer
                 // All neighbor chunks loaded
                 if (count == 9)
                 {
-                    ImmutableMap<String, StructureBoundingBox> volumes = PositionUtils.getBoxesWithinChunk(chunkX, chunkZ, this.subRegions);
+                    ImmutableMap<String, MutableBoundingBox> volumes = PositionUtils.getBoxesWithinChunk(chunkX, chunkZ, this.subRegions);
                     this.schematic.takeBlocksFromWorldWithinChunk(world, pos.x, pos.z, volumes, this.subRegions);
 
                     if (this.takeEntities)
@@ -188,7 +188,7 @@ public class TaskSaveSchematic extends TaskBase implements IInfoHudRenderer
     private void updateInfoHudLines()
     {
         this.infoHudLines.clear();
-        EntityPlayer player = Minecraft.getMinecraft().player;
+        EntityPlayer player = Minecraft.getInstance().player;
 
         if (player != null)
         {

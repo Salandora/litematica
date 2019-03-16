@@ -68,7 +68,7 @@ public class WidgetSelectionSubRegion extends WidgetListEntryBase<String>
     @Override
     public void render(int mouseX, int mouseY, boolean selected)
     {
-        GlStateManager.color(1, 1, 1, 1);
+        GlStateManager.color4f(1, 1, 1, 1);
 
         selected = this.entry.equals(this.selection.getCurrentSubRegionBoxName());
 

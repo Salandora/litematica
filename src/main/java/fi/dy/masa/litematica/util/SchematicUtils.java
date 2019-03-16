@@ -6,7 +6,6 @@ import javax.annotation.Nullable;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.gui.GuiSchematicSave;
 import fi.dy.masa.litematica.gui.GuiSchematicSave.InMemorySchematicCreator;
-import fi.dy.masa.litematica.mixin.IMixinItemBlockSpecial;
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.litematica.schematic.container.LitematicaBlockStateContainer;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
@@ -28,9 +27,10 @@ import fi.dy.masa.malilib.util.SubChunkPos;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemBlockSpecial;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.ItemUseContext;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -47,7 +47,7 @@ public class SchematicUtils
 
         if (area != null)
         {
-            Minecraft mc = Minecraft.getMinecraft();
+            Minecraft mc = Minecraft.getInstance();
 
             if (DataManager.getSchematicProjectsManager().hasProjectOpen())
             {
@@ -180,7 +180,7 @@ public class SchematicUtils
     {
         ItemStack stack = mc.player.getHeldItemMainhand();
 
-        if (stack.isEmpty() == false && (stack.getItem() instanceof ItemBlock || stack.getItem() instanceof ItemBlockSpecial))
+        if (stack.isEmpty() == false && (stack.getItem() instanceof ItemBlock /*|| stack.getItem() instanceof ItemBlock*/))
         {
             WorldSchematic world = SchematicWorldHandler.getSchematicWorld();
             RayTraceWrapper traceWrapper = RayTraceUtils.getGenericTrace(mc.world, mc.player, 10, true);
@@ -191,21 +191,20 @@ public class SchematicUtils
                 RayTraceResult trace = traceWrapper.getRayTraceResult();
                 EnumFacing side = trace.sideHit;
                 Vec3d hitVec = trace.hitVec;
-                int meta = stack.getItem().getMetadata(stack.getMetadata());
                 BlockPos pos = trace.getBlockPos();
                 IBlockState stateOriginal = world.getBlockState(pos);
                 IBlockState stateNew = Blocks.AIR.getDefaultState();
 
+                BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, pos, side, (float) hitVec.x, (float) hitVec.y, (float) hitVec.z));
                 if (stack.getItem() instanceof ItemBlock)
                 {
-                    stateNew = ((ItemBlock) stack.getItem()).getBlock().getStateForPlacement(world, pos.offset(side),
-                                    side, (float) hitVec.x, (float) hitVec.y, (float) hitVec.z, meta, mc.player);
+                    stateNew = ((ItemBlock)stack.getItem()).getBlock().getStateForPlacement(ctx);
                 }
-                else if (stack.getItem() instanceof ItemBlockSpecial)
+                /*else if (stack.getItem() instanceof ItemBlockSpecial)
                 {
                     stateNew = ((IMixinItemBlockSpecial) stack.getItem()).getBlock().getStateForPlacement(world, pos.offset(side),
                                     side, (float) hitVec.x, (float) hitVec.y, (float) hitVec.z, 0, mc.player);
-                }
+                }*/
 
                 return new ReplacementInfo(pos, side, hitVec, stateOriginal, stateNew);
             }

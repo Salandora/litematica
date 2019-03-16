@@ -69,7 +69,7 @@ public class WidgetSchematicPlacement extends WidgetListEntryBase<SchematicPlace
     private int createButtonOnOff(int xRight, int y, boolean isCurrentlyOn, ButtonListener.ButtonType type)
     {
         ButtonOnOff button = ButtonOnOff.createOnOff(xRight, y, -1, true, type.getTranslationKey(), isCurrentlyOn);
-        xRight -= button.getButtonWidth();
+        xRight -= button.getWidth();
         this.addButton(button, new ButtonListener(type, this));
 
         return xRight - 2;

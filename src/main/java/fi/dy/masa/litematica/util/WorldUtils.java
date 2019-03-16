@@ -14,6 +14,7 @@ import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.materials.MaterialCache;
+import fi.dy.masa.litematica.mixin.IMixinKeyBinding;
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.litematica.schematic.SchematicaSchematic;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
@@ -25,6 +26,9 @@ import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
 import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper.HitType;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.litematica.world.WorldSchematic;
+import fi.dy.masa.malilib.gui.Message;
+import fi.dy.masa.malilib.hotkeys.IKeybind;
+import fi.dy.masa.malilib.hotkeys.KeybindMulti;
 import fi.dy.masa.malilib.interfaces.IStringConsumer;
 import fi.dy.masa.malilib.util.FileUtils;
 import fi.dy.masa.malilib.util.InfoUtils;
@@ -55,6 +59,7 @@ import net.minecraft.state.properties.ComparatorMode;
 import net.minecraft.state.properties.Half;
 import net.minecraft.state.properties.SlabType;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
@@ -197,8 +202,9 @@ public class WorldUtils
     public static boolean convertLitematicaSchematicToSchematicaSchematic(
             File inputDir, String inputFileName, File outputDir, String outputFileName, boolean ignoreEntities, boolean override, IStringConsumer feedback)
     {
-        SchematicaSchematic schematic = convertLitematicaSchematicToSchematicaSchematic(inputDir, inputFileName, ignoreEntities, feedback);
-        return schematic != null && schematic.writeToFile(outputDir, outputFileName, override, feedback);
+        //SchematicaSchematic schematic = convertLitematicaSchematicToSchematicaSchematic(inputDir, inputFileName, ignoreEntities, feedback);
+        //return schematic != null && schematic.writeToFile(outputDir, outputFileName, override, feedback);
+        return false;
     }
 
     @Nullable
@@ -213,10 +219,10 @@ public class WorldUtils
         }
 
         WorldSettings settings = new WorldSettings(0L, GameType.CREATIVE, false, false, WorldType.FLAT);
-        WorldClient world = new WorldSchematic(null, settings, 0, EnumDifficulty.NORMAL, Minecraft.getMinecraft().profiler);
+        WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
         BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
-        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, size);
+        WorldUtils.loadChunksSchematicWorld(world, BlockPos.ORIGIN, size);
         SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
         litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
 
@@ -249,10 +255,10 @@ public class WorldUtils
         }
 
         WorldSettings settings = new WorldSettings(0L, GameType.CREATIVE, false, false, WorldType.FLAT);
-        WorldClient world = new WorldSchematic(null, settings, 0, EnumDifficulty.NORMAL, Minecraft.getMinecraft().profiler);
+        WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
         BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
-        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, size);
+        WorldUtils.loadChunksSchematicWorld(world, BlockPos.ORIGIN, size);
         SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
         litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
 
@@ -341,7 +347,7 @@ public class WorldUtils
 
         if (traceWrapper != null &&
             traceWrapper.getHitType() == HitType.VANILLA &&
-            traceWrapper.getRayTraceResult().typeOfHit == RayTraceResult.Type.BLOCK)
+            traceWrapper.getRayTraceResult().type == RayTraceResult.Type.BLOCK)
         {
             state = mc.world.getBlockState(traceWrapper.getRayTraceResult().getBlockPos());
         }
@@ -429,7 +435,7 @@ public class WorldUtils
             Configs.Generic.EASY_PLACE_HOLD_ENABLED.getBooleanValue() &&
             Configs.Generic.EASY_PLACE_MODE.getBooleanValue() &&
             Hotkeys.EASY_PLACE_ACTIVATION.getKeybind().isKeybindHeld() &&
-            KeybindMulti.isKeyDown(mc.gameSettings.keyBindUseItem.getKeyCode()))
+            KeybindMulti.isKeyDown(((IMixinKeyBinding)mc.gameSettings.keyBindUseItem).getInput().getKeyCode()))
         {
             WorldUtils.handleEasyPlace(mc);
         }
@@ -437,7 +443,25 @@ public class WorldUtils
 
     public static boolean handleEasyPlace(Minecraft mc)
     {
+        EnumActionResult result = doEasyPlaceAction(mc);
+
+        if (result == EnumActionResult.FAIL)
+        {
+            InfoUtils.showGuiOrInGameMessage(Message.MessageType.WARNING, "litematica.message.easy_place_fail");
+            return true;
+        }
+
+        return result != EnumActionResult.PASS;
+    }
+
+    public static EnumActionResult doEasyPlaceAction(Minecraft mc)
+    {
         RayTraceWrapper traceWrapper = RayTraceUtils.getGenericTrace(mc.world, mc.player, 6, true);
+
+        if (traceWrapper == null)
+        {
+            return EnumActionResult.PASS;
+        }
 
         if (traceWrapper != null && traceWrapper.getHitType() == RayTraceWrapper.HitType.SCHEMATIC_BLOCK)
         {
@@ -451,37 +475,28 @@ public class WorldUtils
             // Already placed to that position, possible server sync delay
             if (easyPlaceIsPositionCached(pos))
             {
-                return false;
+                return EnumActionResult.FAIL;
             }
 
             if (stack.isEmpty() == false)
             {
-                EnumHand hand = EntityUtils.getUsedHandForItem(mc.player, stack);
-
-                // Abort if the wrong item is in the player's hand
-                if (hand == null)
-                {
-                    return true;
-                }
-
-                stack = mc.player.getHeldItem(hand);
                 IBlockState stateClient = mc.world.getBlockState(pos);
 
                 if (stateSchematic == stateClient)
                 {
-                    return false;
+                    return EnumActionResult.FAIL;
                 }
 
                 // Abort if there is already a block in the target position
                 if (easyPlaceBlockChecksCancel(stateSchematic, stateClient, mc.player, trace, stack))
                 {
-                    return false;
+                    return EnumActionResult.FAIL;
                 }
 
                 // Abort if the required item was not able to be pick-block'd
                 if (doSchematicWorldPickBlock(true, mc) == false)
                 {
-                    return false;
+                    return EnumActionResult.FAIL;
                 }
 
                 EnumHand hand = EntityUtils.getUsedHandForItem(mc.player, stack);
@@ -489,7 +504,7 @@ public class WorldUtils
                 // Abort if the wrong item is in the player's hand
                 if (hand == null)
                 {
-                    return false;
+                    return EnumActionResult.FAIL;
                 }
 
                 Vec3d hitPos = trace.hitVec;
@@ -497,12 +512,13 @@ public class WorldUtils
 
                 // If there is a block in the world right behind the targeted schematic block, then use
                 // that block as the click position
-                if (traceVanilla != null && traceVanilla.typeOfHit == RayTraceResult.Type.BLOCK)
+                if (traceVanilla != null && traceVanilla.type == RayTraceResult.Type.BLOCK)
                 {
                     BlockPos posVanilla = traceVanilla.getBlockPos();
                     IBlockState stateVanilla = mc.world.getBlockState(posVanilla);
+                    BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, posVanilla, sideOrig, (float)hitPos.x, (float)hitPos.y, (float)hitPos.z));
 
-                    if (stateVanilla.getBlock().isReplaceable(mc.world, posVanilla) == false)
+                    if (stateVanilla.isReplaceable(ctx) == false)
                     {
                         posVanilla = posVanilla.offset(traceVanilla.sideHit);
 
@@ -536,11 +552,15 @@ public class WorldUtils
                     }
                 }
 
-                return true;
+                return EnumActionResult.SUCCESS;
             }
         }
+        else if (traceWrapper.getHitType() == RayTraceWrapper.HitType.VANILLA)
+        {
+            return placementRestrictionInEffect(mc) ? EnumActionResult.FAIL : EnumActionResult.PASS;
+        }
 
-        return false;
+        return EnumActionResult.PASS;
     }
 
     private static boolean easyPlaceBlockChecksCancel(IBlockState stateSchematic, IBlockState stateClient,
@@ -652,8 +672,8 @@ public class WorldUtils
      * in the schematic, or the player is holding the wrong item in hand, then true is returned
      * to indicate that the use action should be cancelled.
      * @param mc
-     * @param doEasyPlace
-     * @param restrictPlacement
+     * //@param doEasyPlace
+     * //@param restrictPlacement
      * @return
      */
     public static boolean handlePlacementRestriction(Minecraft mc)
@@ -674,8 +694,8 @@ public class WorldUtils
      * in the schematic, or the player is holding the wrong item in hand, then true is returned
      * to indicate that the use action should be cancelled.
      * @param mc
-     * @param doEasyPlace
-     * @param restrictPlacement
+     * //@param doEasyPlace
+     * //@param restrictPlacement
      * @return
      */
     private static boolean placementRestrictionInEffect(Minecraft mc)

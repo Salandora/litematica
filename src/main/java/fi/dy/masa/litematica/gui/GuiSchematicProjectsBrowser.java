@@ -94,7 +94,7 @@ public class GuiSchematicProjectsBrowser extends GuiListBase<DirectoryEntry, Wid
 
         this.addButton(button, new ButtonListener(type, this));
 
-        return button.getButtonWidth() + 2;
+        return button.getWidth() + 2;
     }
 
     private void reCreateGuiElements()

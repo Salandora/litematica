@@ -121,7 +121,7 @@ public class GuiMainMenu extends GuiBase
                     gui = new GuiAreaSelectionManager();
                     break;
                 case CONFIGURATION:
-                    Minecraft.getMinecraft().displayGuiScreen(new GuiConfigs());
+                    Minecraft.getInstance().displayGuiScreen(new GuiConfigs());
                     return;
                 case LOAD_SCHEMATICS:
                     gui = new GuiSchematicLoad();
@@ -221,7 +221,7 @@ public class GuiMainMenu extends GuiBase
         @Override
         public void actionPerformedWithButton(ButtonGeneric control, int mouseButton)
         {
-            ToolMode mode = DataManager.getToolMode().cycle(Minecraft.getMinecraft().player, mouseButton == 0);
+            ToolMode mode = DataManager.getToolMode().cycle(Minecraft.getInstance().player, mouseButton == 0);
             DataManager.setToolMode(mode);
             this.gui.initGui();
         }

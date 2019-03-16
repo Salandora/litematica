@@ -6,6 +6,7 @@ import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.gui.GuiSchematicVerifier;
 import fi.dy.masa.litematica.gui.GuiSchematicVerifier.BlockMismatchEntry;
 import fi.dy.masa.litematica.gui.Icons;
+import fi.dy.masa.litematica.mixin.IMixinBlockFlowerPot;
 import fi.dy.masa.litematica.schematic.verifier.SchematicVerifier;
 import fi.dy.masa.litematica.schematic.verifier.SchematicVerifier.BlockMismatch;
 import fi.dy.masa.litematica.schematic.verifier.SchematicVerifier.MismatchType;
@@ -26,10 +27,9 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.BlockModelShapes;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.block.model.IBakedModel;
+import net.minecraft.client.renderer.model.IBakedModel;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumBlockRenderType;
 import net.minecraft.util.ResourceLocation;
@@ -311,13 +311,13 @@ public class WidgetSchematicVerificationResult extends WidgetListEntrySortable<B
 
             if (useBlockModelExpected)
             {
-                model = this.blockModelShapes.getModelForState(this.mismatchInfo.stateExpected);
+                model = this.blockModelShapes.getModel(this.mismatchInfo.stateExpected);
                 RenderUtils.renderModelInGui(x1, y, model, this.mismatchInfo.stateExpected, 1);
             }
             else
             {
-                mc.getRenderItem().renderItemAndEffectIntoGUI(mc.player, this.mismatchInfo.stackExpected, x1, y);
-                mc.getRenderItem().renderItemOverlayIntoGUI(mc.fontRenderer, this.mismatchInfo.stackExpected, x1, y, null);
+                mc.getItemRenderer().renderItemAndEffectIntoGUI(mc.player, this.mismatchInfo.stackExpected, x1, y);
+                mc.getItemRenderer().renderItemOverlayIntoGUI(mc.fontRenderer, this.mismatchInfo.stackExpected, x1, y, null);
             }
 
             if (this.mismatchEntry.mismatchType != MismatchType.CORRECT_STATE)
@@ -326,13 +326,13 @@ public class WidgetSchematicVerificationResult extends WidgetListEntrySortable<B
 
                 if (useBlockModelFound)
                 {
-                    model = this.blockModelShapes.getModelForState(this.mismatchInfo.stateFound);
+                    model = this.blockModelShapes.getModel(this.mismatchInfo.stateFound);
                     RenderUtils.renderModelInGui(x2, y, model, this.mismatchInfo.stateFound, 1);
                 }
                 else
                 {
-                    mc.getRenderItem().renderItemAndEffectIntoGUI(mc.player, this.mismatchInfo.stackFound, x2, y);
-                    mc.getRenderItem().renderItemOverlayIntoGUI(mc.fontRenderer, this.mismatchInfo.stackFound, x2, y, null);
+                    mc.getItemRenderer().renderItemAndEffectIntoGUI(mc.player, this.mismatchInfo.stackFound, x2, y);
+                    mc.getItemRenderer().renderItemOverlayIntoGUI(mc.fontRenderer, this.mismatchInfo.stackFound, x2, y, null);
                 }
             }
 
@@ -398,8 +398,8 @@ public class WidgetSchematicVerificationResult extends WidgetListEntrySortable<B
             Minecraft mc = Minecraft.getInstance();
             Block blockExpected = this.stateExpected.getBlock();
             Block blockFound = this.stateFound.getBlock();
-            ResourceLocation rl1 = Block.REGISTRY.getNameForObject(blockExpected);
-            ResourceLocation rl2 = Block.REGISTRY.getNameForObject(blockFound);
+            ResourceLocation rl1 = IRegistry.BLOCK.getKey(blockExpected);
+            ResourceLocation rl2 = IRegistry.BLOCK.getKey(blockFound);
 
             this.blockRegistrynameExpected = rl1 != null ? rl1.toString() : "<null>";
             this.blockRegistrynameFound = rl2 != null ? rl2.toString() : "<null>";
@@ -425,11 +425,11 @@ public class WidgetSchematicVerificationResult extends WidgetListEntrySortable<B
             Block block = state.getBlock();
             String key = block.getTranslationKey() + ".name";
             String name = I18n.format(key);
-            name = key.equals(name) == false ? name : stack.getDisplayName();
+            name = key.equals(name) == false ? name : stack.getDisplayName().getString();
 
-            if (block == Blocks.FLOWER_POT && state.getValue(BlockFlowerPot.CONTENTS) != BlockFlowerPot.EnumFlowerType.EMPTY)
+            if (block instanceof BlockFlowerPot && ((IMixinBlockFlowerPot)block).getFlower() != Blocks.AIR)
             {
-                name = ((new ItemStack(Items.FLOWER_POT)).getDisplayName()) + " & " + name;
+                name = ((new ItemStack(block)).getDisplayName()) + " & " + name;
             }
 
             return name;
@@ -485,24 +485,24 @@ public class WidgetSchematicVerificationResult extends WidgetListEntrySortable<B
 
                 if (useBlockModelExpected)
                 {
-                    model = blockModelShapes.getModelForState(this.stateExpected);
+                    model = blockModelShapes.getModel(this.stateExpected);
                     RenderUtils.renderModelInGui(x1, y, model, this.stateExpected, 1);
                 }
                 else
                 {
-                    mc.getRenderItem().renderItemAndEffectIntoGUI(mc.player, this.stackExpected, x1, y);
-                    mc.getRenderItem().renderItemOverlayIntoGUI(mc.fontRenderer, this.stackExpected, x1, y, null);
+                    mc.getItemRenderer().renderItemAndEffectIntoGUI(mc.player, this.stackExpected, x1, y);
+                    mc.getItemRenderer().renderItemOverlayIntoGUI(mc.fontRenderer, this.stackExpected, x1, y, null);
                 }
 
                 if (useBlockModelFound)
                 {
-                    model = blockModelShapes.getModelForState(this.stateFound);
+                    model = blockModelShapes.getModel(this.stateFound);
                     RenderUtils.renderModelInGui(x2, y, model, this.stateFound, 1);
                 }
                 else
                 {
-                    mc.getRenderItem().renderItemAndEffectIntoGUI(mc.player, this.stackFound, x2, y);
-                    mc.getRenderItem().renderItemOverlayIntoGUI(mc.fontRenderer, this.stackFound, x2, y, null);
+                    mc.getItemRenderer().renderItemAndEffectIntoGUI(mc.player, this.stackFound, x2, y);
+                    mc.getItemRenderer().renderItemOverlayIntoGUI(mc.fontRenderer, this.stackFound, x2, y, null);
                 }
 
                 //mc.getRenderItem().zLevel -= 100;

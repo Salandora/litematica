@@ -226,9 +226,9 @@ public class SchematicProject
     {
         if (this.currentPlacement != null)
         {
-            Minecraft mc = Minecraft.getMinecraft();
+            Minecraft mc = Minecraft.getInstance();
 
-            if (mc.player == null || mc.player.capabilities.isCreativeMode == false)
+            if (mc.player == null || mc.player.abilities.isCreativeMode == false)
             {
                 InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.generic.creative_mode_only");
                 return;
@@ -307,8 +307,8 @@ public class SchematicProject
     {
         if (this.checkCanSaveOrPrintError())
         {
-            Minecraft mc = Minecraft.getMinecraft();
-            String author = mc.player.getName();
+            Minecraft mc = Minecraft.getInstance();
+            String author = mc.player.getName().getString();
             String fileName = this.getNextFileName();
 
             AreaSelection selection = this.getSelection();
@@ -498,7 +498,7 @@ public class SchematicProject
             return false;
         }
 
-        if (Minecraft.getMinecraft().player == null)
+        if (Minecraft.getInstance().player == null)
         {
             InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.schematic_projects.null_player");
             return false;
@@ -531,7 +531,7 @@ public class SchematicProject
             SchematicProject.this.cacheCurrentAreaFromPlacement();
             SchematicProject.this.saveInProgress = false;
 
-            GuiScreen gui = Minecraft.getMinecraft().currentScreen;
+            GuiScreen gui = Minecraft.getInstance().currentScreen;
 
             if (gui instanceof ICompletionListener)
             {

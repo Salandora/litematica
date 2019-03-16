@@ -118,11 +118,11 @@ public class MaterialListUtils
                         for (int x = startX; x <= endX; ++x)
                         {
                             posMutable.setPos(x, y, z);
-                            IBlockState stateSchematic = worldSchematic.getBlockState(posMutable).getActualState(worldSchematic, posMutable);
+                            IBlockState stateSchematic = worldSchematic.getBlockState(posMutable); //.getActualState(worldSchematic, posMutable);
 
                             if (stateSchematic.getBlock() != Blocks.AIR)
                             {
-                                IBlockState stateClient = worldClient.getBlockState(posMutable).getActualState(worldClient, posMutable);
+                                IBlockState stateClient = worldClient.getBlockState(posMutable); //.getActualState(worldClient, posMutable);
                                 countsTotal.addTo(stateSchematic, 1);
 
                                 if (stateClient.getBlock() == Blocks.AIR)

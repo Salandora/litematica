@@ -254,7 +254,7 @@ public class SelectionManager
                     catch (Exception e)
                     {
                         feedback.addMessage(MessageType.ERROR, "litematica.error.area_selection.copy_failed");
-                        LiteModLitematica.logger.warn("Copy failed", e);
+                        Litematica.logger.warn("Copy failed", e);
                         return false;
                     }
 
@@ -320,7 +320,7 @@ public class SelectionManager
 
         AreaSelection selection = new AreaSelection();
         selection.setName(name);
-        BlockPos pos = new BlockPos(Minecraft.getMinecraft().player);
+        BlockPos pos = new BlockPos(Minecraft.getInstance().player);
         selection.createNewSubRegionBox(pos, name);
 
         this.selections.put(selectionId, selection);
@@ -503,7 +503,7 @@ public class SelectionManager
                         trace.getHitSelectionBox(),
                         trace.getHitCorner(),
                         trace.getHitVec(),
-                        entity.getPositionEyes(1f).distanceTo(trace.getHitVec()));
+                        entity.getEyePosition(1f).distanceTo(trace.getHitVec()));
                 InfoUtils.printActionbarMessage("litematica.message.grabbed_element_for_moving");
                 return true;
             }
@@ -749,7 +749,7 @@ public class SelectionManager
         if (gui != null)
         {
             gui.setParent(parent);
-            Minecraft.getMinecraft().displayGuiScreen(gui);
+            Minecraft.getInstance().displayGuiScreen(gui);
         }
     }
 

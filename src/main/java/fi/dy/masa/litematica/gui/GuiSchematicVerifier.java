@@ -45,7 +45,7 @@ public class GuiSchematicVerifier   extends GuiListBase<BlockMismatchEntry, Widg
 
         if (verifier != verifierLast)
         {
-            Minecraft mc = Minecraft.getMinecraft();
+            Minecraft mc = Minecraft.getInstance();
             WidgetSchematicVerificationResult.setMaxNameLengths(verifier.getMismatchOverviewCombined(), mc);
             verifierLast = verifier;
         }

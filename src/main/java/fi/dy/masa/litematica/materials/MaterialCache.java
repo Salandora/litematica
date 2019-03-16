@@ -9,20 +9,16 @@ import javax.annotation.Nullable;
 import com.google.common.collect.ImmutableList;
 import fi.dy.masa.litematica.Litematica;
 import fi.dy.masa.litematica.Reference;
+import fi.dy.masa.litematica.mixin.IMixinBlockFlowerPot;
 import fi.dy.masa.litematica.util.WorldUtils;
 import fi.dy.masa.litematica.world.WorldSchematic;
 import fi.dy.masa.malilib.util.Constants;
 import fi.dy.masa.malilib.util.FileUtils;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockBed;
-import net.minecraft.block.BlockDoor;
-import net.minecraft.block.BlockDoublePlant;
-import net.minecraft.block.BlockFlowerPot;
-import net.minecraft.block.BlockFlowerPot.EnumFlowerType;
-import net.minecraft.block.BlockLiquid;
-import net.minecraft.block.BlockSlab;
+import net.minecraft.block.*;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.fluid.LavaFluid;
+import net.minecraft.fluid.WaterFluid;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -123,7 +119,7 @@ public class MaterialCache
     {
         Block block = state.getBlock();
 
-        if (block == Blocks.FLOWER_POT && state.getValue(BlockFlowerPot.CONTENTS) != BlockFlowerPot.EnumFlowerType.EMPTY)
+        if (block instanceof BlockFlowerPot && ((IMixinBlockFlowerPot)block).getFlower() != Blocks.AIR)
         {
             return true;
         }
@@ -140,42 +136,10 @@ public class MaterialCache
     {
         Block block = state.getBlock();
 
-        if (block == Blocks.FLOWER_POT && state.getValue(BlockFlowerPot.CONTENTS) != BlockFlowerPot.EnumFlowerType.EMPTY)
+        if (block instanceof BlockFlowerPot && ((IMixinBlockFlowerPot)block).getFlower() != Blocks.AIR)
         {
-            // Nice & clean >_>
-            EnumFlowerType type = state.getValue(BlockFlowerPot.CONTENTS);
-            ItemStack plant = null;
-
-            switch (type)
-            {
-                case ACACIA_SAPLING:    plant = new ItemStack(Blocks.SAPLING, 1, 4); break;
-                case ALLIUM:            plant = new ItemStack(Blocks.RED_FLOWER, 1, 2); break;
-                case BIRCH_SAPLING:     plant = new ItemStack(Blocks.SAPLING, 1, 2); break;
-                case BLUE_ORCHID:       plant = new ItemStack(Blocks.RED_FLOWER, 1, 1); break;
-                case CACTUS:            plant = new ItemStack(Blocks.CACTUS, 1, 0); break;
-                case DANDELION:         plant = new ItemStack(Blocks.YELLOW_FLOWER, 1, 0); break;
-                case DARK_OAK_SAPLING:  plant = new ItemStack(Blocks.SAPLING, 1, 5); break;
-                case DEAD_BUSH:         plant = new ItemStack(Blocks.DEADBUSH, 1, 0); break;
-                case FERN:              plant = new ItemStack(Blocks.TALLGRASS, 1, 2); break;
-                case HOUSTONIA:         plant = new ItemStack(Blocks.RED_FLOWER, 1, 3); break;
-                case JUNGLE_SAPLING:    plant = new ItemStack(Blocks.SAPLING, 1, 3); break;
-                case MUSHROOM_BROWN:    plant = new ItemStack(Blocks.BROWN_MUSHROOM, 1, 0); break;
-                case MUSHROOM_RED:      plant = new ItemStack(Blocks.RED_MUSHROOM, 1, 0); break;
-                case OAK_SAPLING:       plant = new ItemStack(Blocks.SAPLING, 1, 0); break;
-                case ORANGE_TULIP:      plant = new ItemStack(Blocks.RED_FLOWER, 1, 5); break;
-                case OXEYE_DAISY:       plant = new ItemStack(Blocks.RED_FLOWER, 1, 8); break;
-                case PINK_TULIP:        plant = new ItemStack(Blocks.RED_FLOWER, 1, 7); break;
-                case POPPY:             plant = new ItemStack(Blocks.RED_FLOWER, 1, 0); break;
-                case RED_TULIP:         plant = new ItemStack(Blocks.RED_FLOWER, 1, 4); break;
-                case SPRUCE_SAPLING:    plant = new ItemStack(Blocks.SAPLING, 1, 1); break;
-                case WHITE_TULIP:       plant = new ItemStack(Blocks.RED_FLOWER, 1, 6); break;
-                default:
-            }
-
-            if (plant != null)
-            {
-                return ImmutableList.of(new ItemStack(Items.FLOWER_POT), plant);
-            }
+            ItemStack plant = new ItemStack(((IMixinBlockFlowerPot)block).getFlower());
+            return ImmutableList.of(new ItemStack(Blocks.FLOWER_POT), plant);
         }
 
         return ImmutableList.of(this.getItemForState(state, world, pos));
@@ -187,8 +151,8 @@ public class MaterialCache
         Block block = state.getBlock();
 
         if (block == Blocks.PISTON_HEAD ||
-            block == Blocks.PISTON_EXTENSION ||
-            block == Blocks.PORTAL ||
+            block == Blocks.PISTON ||
+            block == Blocks.NETHER_PORTAL ||
             block == Blocks.END_PORTAL ||
             block == Blocks.END_GATEWAY)
         {
@@ -208,7 +172,7 @@ public class MaterialCache
         }
         else if (block == Blocks.LAVA)
         {
-            if (state.getValue(BlockLiquid.LEVEL) == 0)
+            if (state.get(LavaFluid.LEVEL_1_8) == 0)
             {
                 return new ItemStack(Items.LAVA_BUCKET);
             }
@@ -219,7 +183,7 @@ public class MaterialCache
         }
         else if (block == Blocks.WATER)
         {
-            if (state.getValue(BlockLiquid.LEVEL) == 0)
+            if (state.get(WaterFluid.LEVEL_1_8) == 0)
             {
                 return new ItemStack(Items.WATER_BUCKET);
             }
@@ -236,7 +200,7 @@ public class MaterialCache
         {
             return ItemStack.EMPTY;
         }
-        else if (block instanceof BlockDoublePlant && state.getValue(BlockDoublePlant.HALF) == BlockDoublePlant.EnumBlockHalf.UPPER)
+        else if (block instanceof BlockDoublePlant && state.get(BlockDoublePlant.HALF) == DoubleBlockHalf.UPPER)
         {
             return ItemStack.EMPTY;
         }

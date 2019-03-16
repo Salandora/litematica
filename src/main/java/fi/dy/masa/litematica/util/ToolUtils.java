@@ -12,6 +12,7 @@ import fi.dy.masa.malilib.util.InfoUtils;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.command.arguments.BlockStateParser;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
@@ -20,14 +21,16 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.registry.IRegistry;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.dimension.DimensionType;
 
 public class ToolUtils
 {
     public static void fillSelectionVolumes(Minecraft mc, IBlockState state, @Nullable IBlockState stateToReplace)
     {
-        if (mc.player != null && mc.player.capabilities.isCreativeMode)
+        if (mc.player != null && mc.player.abilities.isCreativeMode)
         {
             final AreaSelection area = DataManager.getSelectionManager().getCurrentSelection();
 
@@ -38,8 +41,8 @@ public class ToolUtils
 
                 if (mc.isSingleplayer())
                 {
-                    final int dimId = fi.dy.masa.malilib.util.WorldUtils.getDimensionId(mc.player.getEntityWorld());
-                    final WorldServer world = mc.getIntegratedServer().getWorld(dimId);
+                    final DimensionType dim = fi.dy.masa.malilib.util.WorldUtils.getDimensionType(mc.player.getEntityWorld());
+                    final WorldServer world = mc.getIntegratedServer().getWorld(dim);
 
                     world.addScheduledTask(new Runnable()
                     {
@@ -120,7 +123,7 @@ public class ToolUtils
 
     public static boolean fillSelectionVolumesCommand(Collection<Box> boxes, IBlockState state, @Nullable IBlockState stateToReplace, Minecraft mc)
     {
-        ResourceLocation rl = Block.REGISTRY.getNameForObject(state.getBlock());
+        ResourceLocation rl = IRegistry.BLOCK.getKey(state.getBlock());
 
         if (rl == null)
         {
@@ -128,11 +131,11 @@ public class ToolUtils
         }
 
         String blockName = rl.toString();
-        String strCommand = blockName + " " + String.valueOf(state.getBlock().getMetaFromState(state));
+        String strCommand = blockName + " " + BlockStateParser.toString(state, null);
 
         if (stateToReplace != null)
         {
-            rl = Block.REGISTRY.getNameForObject(stateToReplace.getBlock());
+            rl =  IRegistry.BLOCK.getKey(stateToReplace.getBlock());
 
             if (rl == null)
             {
@@ -179,7 +182,7 @@ public class ToolUtils
 
     public static void deleteSelectionVolumes(@Nullable final AreaSelection area, boolean removeEntities, Minecraft mc)
     {
-        if (mc.player != null && mc.player.capabilities.isCreativeMode)
+        if (mc.player != null && mc.player.abilities.isCreativeMode)
         {
             if (area != null && area.getAllSubRegionBoxes().size() > 0)
             {
@@ -188,8 +191,8 @@ public class ToolUtils
 
                 if (mc.isSingleplayer())
                 {
-                    final int dimId = fi.dy.masa.malilib.util.WorldUtils.getDimensionId(mc.player.getEntityWorld());
-                    final WorldServer world = mc.getIntegratedServer().getWorld(dimId);
+                    final DimensionType dim = fi.dy.masa.malilib.util.WorldUtils.getDimensionType(mc.player.getEntityWorld());
+                    final WorldServer world = mc.getIntegratedServer().getWorld(dim);
 
                     world.addScheduledTask(new Runnable()
                     {
@@ -269,7 +272,7 @@ public class ToolUtils
                 {
                     if ((entity instanceof EntityPlayer) == false)
                     {
-                        entity.setDead();
+                        entity.remove();
                     }
                 }
             }

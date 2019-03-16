@@ -250,7 +250,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
     {
         ButtonOnOff button = ButtonOnOff.createOnOff(x, y, width, false, type.getTranslationKey(), isCurrentlyOn);
         this.addButton(button, new ButtonListener(type, null, null, this));
-        return button.getButtonWidth();
+        return button.getWidth();
     }
 
     protected int createButton(int x, int y, int width, ButtonListener.Type type)
@@ -457,7 +457,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
                 case CREATE_SUB_REGION:
                     GuiTextInput gui = new GuiTextInput(512, "litematica.gui.title.area_editor.sub_region_name", "", null, new SubRegionCreator(this.parent));
                     gui.setParent(this.parent);
-                    Minecraft.getMinecraft().displayGuiScreen(gui);
+                    Minecraft.getInstance().displayGuiScreen(gui);
                     break;
 
                 case SET_SELECTION_NAME:

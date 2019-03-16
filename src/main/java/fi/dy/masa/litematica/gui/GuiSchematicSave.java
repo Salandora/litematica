@@ -146,7 +146,7 @@ public class GuiSchematicSave extends GuiSchematicSaveBase implements ICompletio
                             return;
                         }
 
-                        String author = this.gui.mc.player.getName();
+                        String author = this.gui.mc.player.getName().toString();
                         boolean takeEntities = this.gui.checkboxIgnoreEntities.isChecked() == false;
                         LitematicaSchematic schematic = LitematicaSchematic.createEmptySchematic(area, author);
                         TaskSaveSchematic task = new TaskSaveSchematic(dir, fileName, schematic, area, takeEntities, overwrite);

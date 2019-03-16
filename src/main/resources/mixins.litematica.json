@@ -5,20 +5,22 @@
     "minVersion": "0.6",
     "client": [
         "IMixinBlockRendererDispatcher",
+        "IMixinBlockFlowerPot",
         "IMixinCompiledChunk",
         "IMixinKeyBinding",
-        "IMixinItemBlockSpecial",
         "IMixinNBTTagLongArray",
+        "IMixinRenderChunk",
         "IMixinViewFrustum",
         "IMixinWorldClient",
         "MixinBlockRail",
         "MixinChunk",
         "MixinChunkProviderClient",
+        "MixinGameRenderer",
         "MixinGuiOverlayDebug",
         "MixinMinecraft",
         "MixinNetHandlerPlayClient",
-        "MixinRenderGlobal",
-        "MixinWorldClient"
+        "MixinWorldClient",
+        "MixinWorldRenderer"
     ],
     "injectors": {
         "defaultRequire": 1

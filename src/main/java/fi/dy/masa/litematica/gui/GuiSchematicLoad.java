@@ -256,7 +256,7 @@ public class GuiSchematicLoad extends GuiSchematicBrowserBase
             MaterialListSchematic materialList = new MaterialListSchematic(this.schematic, strings);
             materialList.recreateMaterialList();
             DataManager.setMaterialList(materialList); // Remember the last opened material list for the hotkey to (re-) open it
-            Minecraft.getMinecraft().displayGuiScreen(new GuiMaterialList(materialList));
+            Minecraft.getInstance().displayGuiScreen(new GuiMaterialList(materialList));
 
             return true;
         }

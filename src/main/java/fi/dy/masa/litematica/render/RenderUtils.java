@@ -25,7 +25,6 @@ import net.minecraft.inventory.IInventory;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
 
@@ -423,14 +422,12 @@ public class RenderUtils
      */
     public static void drawBlockModelOutlinesBatched(IBakedModel model, IBlockState state, BlockPos pos, Color4f color, double expand, BufferBuilder buffer)
     {
-        long rand = MathHelper.getPositionRandom(pos);
-
         for (final EnumFacing side : PositionUtils.FACING_ALL)
         {
-            renderModelQuadOutlines(pos, buffer, color, model.getQuads(state, side, rand));
+            renderModelQuadOutlines(pos, buffer, color, model.getQuads(state, side, RAND));
         }
 
-        renderModelQuadOutlines(pos, buffer, color, model.getQuads(state, null, rand));
+        renderModelQuadOutlines(pos, buffer, color, model.getQuads(state, null, RAND));
     }
 
     private static void renderModelQuadOutlines(BlockPos pos, BufferBuilder buffer, Color4f color, List<BakedQuad> quads)
@@ -474,20 +471,17 @@ public class RenderUtils
 
     public static void drawBlockModelQuadOverlayBatched(IBakedModel model, IBlockState state, BlockPos pos, Color4f color, double expand, BufferBuilder buffer)
     {
-        long rand = MathHelper.getPositionRandom(pos);
-
         for (final EnumFacing side : PositionUtils.FACING_ALL)
         {
-            renderModelQuadOverlayBatched(pos, buffer, color, model.getQuads(state, side, rand));
+            renderModelQuadOverlayBatched(pos, buffer, color, model.getQuads(state, side, RAND));
         }
 
-        renderModelQuadOverlayBatched(pos, buffer, color, model.getQuads(state, null, rand));
+        renderModelQuadOverlayBatched(pos, buffer, color, model.getQuads(state, null, RAND));
     }
 
     public static void drawBlockModelQuadOverlayBatched(IBakedModel model, IBlockState state, BlockPos pos, EnumFacing side, Color4f color, double expand, BufferBuilder buffer)
     {
-        long rand = MathHelper.getPositionRandom(pos);
-        renderModelQuadOverlayBatched(pos, buffer, color, model.getQuads(state, side, rand));
+        renderModelQuadOverlayBatched(pos, buffer, color, model.getQuads(state, side, RAND));
     }
 
     private static void renderModelQuadOverlayBatched(BlockPos pos, BufferBuilder buffer, Color4f color, List<BakedQuad> quads)
@@ -618,7 +612,7 @@ public class RenderUtils
     public static int renderInventoryOverlay(BlockInfoAlignment align, LeftRight side, int offY,
             IInventory inv, InventoryRenderType type, InventoryProperties props, Minecraft mc)
     {
-        ScaledResolution res = new ScaledResolution(mc);
+        MainWindow res = mc.mainWindow;
 
         int xInv = 0;
         int yInv = 0;
@@ -689,7 +683,7 @@ public class RenderUtils
     /*
     private static void renderModel(final IBlockState state, final IBakedModel model, final BlockPos pos, final int alpha)
     {
-        //BlockRendererDispatcher dispatcher = Minecraft.getMinecraft().getBlockRendererDispatcher();
+        //BlockRendererDispatcher dispatcher = Minecraft.getInstance().getBlockRendererDispatcher();
         //dispatcher.getBlockModelRenderer().renderModelBrightnessColor(model, 1f, 1f, 1f, 1f);
 
         final Tessellator tessellator = Tessellator.getInstance();
@@ -726,7 +720,7 @@ public class RenderUtils
 
     private static int getTint(final IBlockState state, final BlockPos pos, final int alpha, final int tintIndex)
     {
-        Minecraft mc = Minecraft.getMinecraft();
+        Minecraft mc = Minecraft.getInstance();
         return alpha | mc.getBlockColors().colorMultiplier(state, null, pos, tintIndex);
     }
 

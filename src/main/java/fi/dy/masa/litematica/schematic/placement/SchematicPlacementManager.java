@@ -40,10 +40,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MutableBoundingBox;
-import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.*;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
@@ -181,7 +178,7 @@ public class SchematicPlacementManager
 
     public List<MutableBoundingBox> getTouchedBoxesInSubChunk(SubChunkPos subChunk)
     {
-        List<StructureBoundingBox> list = new ArrayList<>();
+        List<MutableBoundingBox> list = new ArrayList<>();
 
         for (PlacementPart part : this.touchedVolumesInSubChunk.get(subChunk))
         {
@@ -421,7 +418,7 @@ public class SchematicPlacementManager
 
                     for (Map.Entry<String, MutableBoundingBox> entry : boxMap.entrySet())
                     {
-                        StructureBoundingBox bbOrig = entry.getValue();
+                        MutableBoundingBox bbOrig = entry.getValue();
                         final int startCY = (bbOrig.minY >> 4);
                         final int endCY = (bbOrig.maxY >> 4);
 
@@ -616,13 +613,13 @@ public class SchematicPlacementManager
 
     public void pastePlacementToWorld(final SchematicPlacement schematicPlacement, boolean changedBlocksOnly, Minecraft mc)
     {
-        if (mc.player != null && mc.player.capabilities.isCreativeMode)
+        if (mc.player != null && mc.player.abilities.isCreativeMode)
         {
             if (schematicPlacement != null)
             {
                 if (mc.isSingleplayer())
                 {
-                    final WorldServer world = mc.getIntegratedServer().getWorld(WorldUtils.getDimensionId(mc.player.getEntityWorld()));
+                    final WorldServer world = mc.getIntegratedServer().getWorld(mc.player.getEntityWorld().dimension.getType());
                     final LitematicaSchematic schematic = schematicPlacement.getSchematic();
 
                     world.addScheduledTask(new Runnable()
@@ -764,9 +761,9 @@ public class SchematicPlacementManager
     {
         private final SchematicPlacement placement;
         private final String subRegionName;
-        private final StructureBoundingBox bb;
+        private final MutableBoundingBox bb;
 
-        public PlacementPart(SchematicPlacement placement, String subRegionName, StructureBoundingBox bb)
+        public PlacementPart(SchematicPlacement placement, String subRegionName, MutableBoundingBox bb)
         {
             this.placement = placement;
             this.subRegionName = subRegionName;
@@ -783,7 +780,7 @@ public class SchematicPlacementManager
             return this.subRegionName;
         }
 
-        public StructureBoundingBox getBox()
+        public MutableBoundingBox getBox()
         {
             return this.bb;
         }
