@@ -6,7 +6,7 @@
     "litematica.error.area_selection.rename.already_exists": "Error: An area already exists with the file name '%s'",
     "litematica.error.area_selection.rename.invalid_safe_file_name": "Invalid generated safe file name '%s'",
 
-    "litematica.error.duplicate_schematic_load": "Error: Tried to load a duplicate schematic + placement",
+    "litematica.error.duplicate_schematic_placement": "Error: Tried to add a placement that already exists",
     "litematica.error.generic.creative_mode_only": "This action is only available in Creative mode",
     "litematica.error.generic.failed_to_delete_file": "Failed to delete the file '%s'",
     "litematica.error.generic.failed_to_sort_list_of_ignored_states": "Failed to sort the list of ignored states",
@@ -34,9 +34,7 @@
     "litematica.error.schematic_placements.remove_fail_locked": "The placement is locked!\n- Hold Shift to force remove it",
 
     "litematica.error.schematic_save.directory_doesnt_exist": "No such directory: '%s'",
-    "litematica.error.schematic_save.failed_to_create_directory": "Failed to create directory '%s'",
     "litematica.error.schematic_save.file_already_exists": "File '%s' already exists",
-    "litematica.error.schematic_save.file_or_directory_already_exists": "File or directory '%s' already exists",
     "litematica.error.schematic_save.invalid_directory": "Invalid directory '%s'",
     "litematica.error.schematic_save.invalid_schematic_name": "Invalid schematic name '%s'",
     "litematica.error.schematic_save.schematic_creation_failed": "Failed to create the schematic!",
@@ -66,7 +64,7 @@
 
     "litematica.info.schematic_load.schematic_loaded": "Schematic '%s' successfully loaded to memory",
     "litematica.info.schematic_manager.preview.right_click_to_cancel": "Right click the button to cancel a pending preview operation",
-    "litematica.info.schematic_manager.preview.set_preview_by_taking_a_screenshot": "Use the screenshot keybind to set the preview",
+    "litematica.info.schematic_manager.preview.set_preview_by_taking_a_screenshot": "Use the normal screenshot key to set the preview.\nOr right click the Set preview button to cancel setting the preview.",
     "litematica.info.schematic_manager.preview.success": "Preview image successfully set",
 
     "litematica.gui.button.area_editor.change_corner_mode": "Corner Mode: %s",
@@ -77,7 +75,7 @@
     "litematica.gui.button.area_editor.set_box_name": "Set",
     "litematica.gui.button.area_editor.set_selection_name": "Set",
 
-    "litematica.gui.button.area_selection_mode": "Area Selection Mode: %s    ",
+    "litematica.gui.button.area_selection_mode": "Area Selection Mode: %s",
     "litematica.gui.button.area_selections.create_directory": "Create directory",
     "litematica.gui.button.area_selections.create_new_selection": "New selection",
     "litematica.gui.button.area_selections.create_selection_from_placement": "From Placement",
@@ -85,7 +83,7 @@
 
     "litematica.gui.button.change_menu.area_editor": "Area Editor",
     "litematica.gui.button.change_menu.configuration_menu": "Configuration menu",
-    "litematica.gui.button.change_menu.load_schematics_to_memory": "Load schematics",
+    "litematica.gui.button.change_menu.load_schematics_to_memory": "Load Schematics",
     "litematica.gui.button.change_menu.schematic_manager": "Schematic Manager",
     "litematica.gui.button.change_menu.schematic_projects_manager": "Schematic Projects",
     "litematica.gui.button.change_menu.show_area_selections": "Area Selection browser",
@@ -159,6 +157,7 @@
     "litematica.gui.button.schematic_projects.open_project_browser": "Projects Browser",
     "litematica.gui.button.schematic_projects.place_to_world": "Place to world",
     "litematica.gui.button.schematic_projects.save_version": "Save Version",
+
     "litematica.gui.button.schematic_verifier.ignore": "Ignore",
     "litematica.gui.button.schematic_verifier.range_type": "Range: %s",
     "litematica.gui.button.schematic_verifier.reset_ignored": "Reset ignored",
@@ -177,7 +176,7 @@
     "litematica.gui.button.disable": "Disable",
     "litematica.gui.button.enable": "Enable",
     "litematica.gui.button.import": "Import",
-    "litematica.gui.button.load_schematic_to_memory": "Load Schematic to memory",
+    "litematica.gui.button.load_schematic_to_memory": "Load Schematic",
     "litematica.gui.button.mirror_value": "Mirror: %s",
     "litematica.gui.button.move_to_player": "Move to player",
     "litematica.gui.button.ok": "Ok",
@@ -204,6 +203,7 @@
     "litematica.gui.label.area_editor.sub_regions": "Sub-regions (%s)",
 
     "litematica.gui.label.area_selection_manager.current_selection": "Selected area: %s",
+
     "litematica.gui.label.area_selection_box_count": "Boxes: %d",
     "litematica.gui.label.area_selection_origin": "Origin: %s",
     "litematica.gui.label.area_selection.mode.normal": "Normal",
@@ -218,7 +218,7 @@
     "litematica.gui.label.material_list.available": "Available",
     "litematica.gui.label.material_list.item": "Item",
     "litematica.gui.label.material_list.missing": "Missing",
-    "litematica.gui.label.material_list.multiplier": "Multiplier: %s",
+    "litematica.gui.label.material_list.multiplier": "Multiplier:",
     "litematica.gui.label.material_list.name": "Name",
     "litematica.gui.label.material_list.progress": "Progress: %s",
     "litematica.gui.label.material_list.progress.done": "Done %s",
@@ -238,15 +238,17 @@
     "litematica.gui.label.render_layers.hotkey": "Hotkey",
     "litematica.gui.label.render_layers.hover.hotkey": "The move layer hotkeys will affect this boundary.\nIf both are unselected, then the hotkeys will affect\nthe boundary that is closest to the player.",
 
-    "litematica.gui.label.schematic_info.author": "Author: §f%s§r",
+    "litematica.gui.label.schematic_info.schematic_author": "Schematic by: §f%s§r",
     "litematica.gui.label.schematic_info.description": "Description:",
     "litematica.gui.label.schematic_info.enclosing_size": "Enclosing size:",
+    "litematica.gui.label.schematic_info.enclosing_size_value": "Enclosing size: §f%s§r",
     "litematica.gui.label.schematic_info.name": "Name:",
     "litematica.gui.label.schematic_info.region_count": "Regions: §f%d§r",
     "litematica.gui.label.schematic_info.time_created": "Created: §f%s§r",
     "litematica.gui.label.schematic_info.time_modified": "Modified: §f%s§r",
-    "litematica.gui.label.schematic_info.total_volume": "Total volume: §f%d§r blocks",
     "litematica.gui.label.schematic_info.total_blocks": "Total blocks: §f%d§r",
+    "litematica.gui.label.schematic_info.total_blocks_and_volume": "Blocks/Volume: §f%d§r/§f%d§r",
+    "litematica.gui.label.schematic_info.total_volume": "Total volume: §f%d§r blocks",
 
     "litematica.gui.label.schematic_load.checkbox.create_placement": "Create a placement",
     "litematica.gui.label.schematic_load.hoverinfo.create_placement": "Immediately create a new placement\nand select that placement",
@@ -290,6 +292,7 @@
     "litematica.gui.message.confirm_file_deletion": "Do you want to delete the file '%s'?",
     "litematica.gui.message.schematic_projects.confirm_delete_area": "Do you want to delete the \"last affected\" area?\nThis will delete whatever blocks and entities are within the area that the project manager last placed to the world, or last saved as a version. (Basically the \"last seen affected area\", such that if you were to cycle versions, it would not leave blocks behind from the previous version.)",
     "litematica.gui.message.schematic_projects.confirm_place_to_world": "Do you want to place this version to the world?\nIt will delete whatever blocks are within the area that the project manager last placed to the world, or last saved as a version. (Basically the \"last seen affected area\", such that if you were to cycle versions, it would not leave blocks behind from the previous version.)",
+
     "litematica.gui.title.area_editor_normal": "Area Editor (Normal/Multi-box mode)",
     "litematica.gui.title.area_editor_normal_schematic_projects": "Area Editor (§6§lSchematic Projects area§r)",
     "litematica.gui.title.area_editor_simple": "Area Editor (Simple mode)",
@@ -306,7 +309,7 @@
     "litematica.gui.title.create_directory": "Create a new directory",
     "litematica.gui.title.create_in_memory_schematic": "Create an in-memory Schematic",
     "litematica.gui.title.create_schematic_project": "Create a new schematic project",
-    "litematica.gui.title.litematica_main_menu": "Litematica Main Menu",
+    "litematica.gui.title.litematica_main_menu": "Litematica %s",
     "litematica.gui.title.load_schematic": "Load Schematic",
     "litematica.gui.title.manage_loaded_schematics": "Manage loaded Schematics",
     "litematica.gui.title.manage_schematic_placements": "Manage Schematic Placements",
@@ -335,12 +338,15 @@
     "litematica.hud.area_selection.dimensions_position": "Dim: %s - p1: %s, p2: %s",
     "litematica.hud.area_selection.mode.corners": "Corners",
     "litematica.hud.area_selection.mode.expand": "Expand",
-    "litematica.hud.area_selection.mode.cuboid": "Cuboid",
     "litematica.hud.area_selection.origin": "Origin: %s",
     "litematica.hud.area_selection.selected_area_normal": "Area: %s",
     "litematica.hud.area_selection.selected_area_simple": "Area [§6Simple mode§r]: %s",
     "litematica.hud.area_selection.selected_sub_region": "Sub-region: %s",
     "litematica.hud.area_selection.selection_corners_mode": "Corners Mode: %s",
+
+    "litematica.hud.delete.target_mode": "Delete target mode: %s",
+    "litematica.hud.delete.target_mode.area": "Current Area",
+    "litematica.hud.delete.target_mode.placement": "Current Placement",
 
     "litematica.hud.misc.easy_place_mode_enabled": "Easy Place mode §aON§r",
     "litematica.hud.misc.none_brackets": "<none>",
@@ -349,6 +355,7 @@
     "litematica.hud.misc.render_layer_mode_all": "Layer Mode: %s",
     "litematica.hud.misc.renderer_status": "Renderers: A: %s S: %s B: %s O: %s SEL: %s",
 
+    "litematica.hud.schematic_placement.hover_info.lock_coordinate": "Lock this coordinate\nThis allows changing the other coordinates\nwithout affecting the locked ones",
     "litematica.hud.schematic_placement.hover_info.placement_locked": "This placement has been locked and can't\nbe modified without unlocking it first",
     "litematica.hud.schematic_placement.hover_info.placement_modified": "This placement has been modified",
     "litematica.hud.schematic_placement.hover_info.placement_sub_region_modified": "This sub-region has been modified",
@@ -373,10 +380,12 @@
     "litematica.tool_hud.block_1": "Block: %s",
     "litematica.tool_hud.block_2": "Replace: %s",
     "litematica.tool_hud.facing": "Facing: %s",
-    "litematica.info.material_list": "- The Material List hotkey will open the last viewed Material List,\n   if there is one stored\n- To switch to a different Material List, open one via\n   the GUI button in the Placement Configuration GUI or\n   the schematic browser\n- If there is no last viewed Material List yet,\n   then the selected Placement is used, if there is one",
+
+    "litematica.info.material_list": "- The Material List hotkey will open the last viewed Material List,\n   if there is one stored\n- To switch to a different Material List, open one via\n   the GUI button in the Placement Configuration GUI or\n   the schematic browser\n- The stored/last viewed list is also forgot\n   if the selected Schematic Placement is changed\n- If there is no last viewed Material List yet,\n   then the selected Placement is used, if there is one",
 
     "litematica.label.alignment.center": "Center",
     "litematica.label.alignment.top_center": "Top Center",
+
     "litematica.label.none_lower": "none",
     "litematica.label.no": "no",
     "litematica.label.yes": "yes",
@@ -385,6 +394,7 @@
     "litematica.message.error.no_area_selected": "§cNo area selected§r",
     "litematica.message.error.no_placement_selected": "§cNo placement selected§r",
     "litematica.message.error.only_works_in_single_player": "§cThis operation only works in single player§r",
+    "litematica.message.error.placement_paste_outside_world": "The placement can't be pasted in the current position, because it goes outside the world bounds",
     "litematica.message.error.schematic_paste_failed": "§cSchematic Paste to world failed§r",
     "litematica.message.error.schematic_save_failed": "Failed to save schematic to file '%s'",
     "litematica.message.error.schematic_save_interrupted": "Schematic saving interrupted or stopped",
@@ -406,12 +416,12 @@
     "litematica.message.placement.cant_modify_is_locked": "§cThe placement is locked and can't be modified§r",
     "litematica.message.placement.moved_placement_origin": "Moved placement origin from %s => %s",
     "litematica.message.placement.moved_subregion_to": "Moved sub-region to %s",
-
+    "litematica.message.placement_restriction_fail": "Action prevented by Placement Restriction mode",
     "litematica.message.removed_area_origin": "Removed the explicit/manual area origin point",
     "litematica.message.removed_selection_box": "Removed selection box %s",
     "litematica.message.scheduled_task_added": "Scheduled task added...",
     "litematica.message.schematic_exported_as": "Schematic exported as '%s'",
-    "litematica.message.schematic_pasted": "Schematic Pasted in world",
+    "litematica.message.schematic_pasted": "Schematic pasted in world",
     "litematica.message.schematic_pasted_using_setblock": "Schematic pasted using %s setblock commands",
     "litematica.message.schematic_placement_created": "Placement created for '%s'",
     "litematica.message.schematic_preview_cancelled": "Preview task cancelled",

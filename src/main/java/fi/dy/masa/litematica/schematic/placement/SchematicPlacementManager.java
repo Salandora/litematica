@@ -562,9 +562,13 @@ public class SchematicPlacementManager
             {
                 BlockPos old = schematicPlacement.getOrigin();
                 schematicPlacement.setOrigin(pos, InfoUtils.INFO_MESSAGE_CONSUMER);
-                String posStrOld = String.format("x: %d, y: %d, z: %d", old.getX(), old.getY(), old.getZ());
-                String posStrNew = String.format("x: %d, y: %d, z: %d", pos.getX(), pos.getY(), pos.getZ());
-                InfoUtils.showGuiOrActionBarMessage(MessageType.SUCCESS, "litematica.message.placement.moved_placement_origin", posStrOld, posStrNew);
+
+                if (old.equals(schematicPlacement.getOrigin()) == false)
+                {
+                    String posStrOld = String.format("x: %d, y: %d, z: %d", old.getX(), old.getY(), old.getZ());
+                    String posStrNew = String.format("x: %d, y: %d, z: %d", pos.getX(), pos.getY(), pos.getZ());
+                    InfoUtils.showGuiOrActionBarMessage(MessageType.SUCCESS, "litematica.message.placement.moved_placement_origin", posStrOld, posStrNew);
+                }
             }
         }
     }
@@ -617,6 +621,12 @@ public class SchematicPlacementManager
         {
             if (schematicPlacement != null)
             {
+                if (PositionUtils.isPlacementWithinWorld(mc.world, schematicPlacement, false) == false)
+                {
+                    InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.placement_paste_outside_world");
+                    return;
+                }
+
                 if (mc.isSingleplayer())
                 {
                     final WorldServer world = mc.getIntegratedServer().getWorld(mc.player.getEntityWorld().dimension.getType());
@@ -632,7 +642,7 @@ public class SchematicPlacementManager
                             }
                             else
                             {
-                                InfoUtils.showGuiOrActionBarMessage(MessageType.ERROR, "litematica.message.error.schematic_paste_failed");
+                                InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.schematic_paste_failed");
                             }
                         }
                     });
@@ -648,7 +658,7 @@ public class SchematicPlacementManager
             }
             else
             {
-                InfoUtils.showGuiOrActionBarMessage(MessageType.ERROR, "litematica.message.error.no_placement_selected");
+                InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_placement_selected");
             }
         }
         else

@@ -269,17 +269,17 @@ public class WorldRendererSchematic extends WorldRenderer
             this.loadRenderers();
         }
 
-        World worldClient = this.world;
-        worldClient.profiler.startSection("litematica_camera");
+        World world = this.world;
+        world.profiler.startSection("litematica_camera");
 
         double diffX = viewEntity.posX - this.frustumUpdatePosX;
         double diffY = viewEntity.posY - this.frustumUpdatePosY;
         double diffZ = viewEntity.posZ - this.frustumUpdatePosZ;
 
         if (this.frustumUpdatePosChunkX != viewEntity.chunkCoordX ||
-            this.frustumUpdatePosChunkY != viewEntity.chunkCoordY ||
-            this.frustumUpdatePosChunkZ != viewEntity.chunkCoordZ ||
-            diffX * diffX + diffY * diffY + diffZ * diffZ > 16.0D)
+                this.frustumUpdatePosChunkY != viewEntity.chunkCoordY ||
+                this.frustumUpdatePosChunkZ != viewEntity.chunkCoordZ ||
+                diffX * diffX + diffY * diffY + diffZ * diffZ > 16.0D)
         {
             this.frustumUpdatePosX = viewEntity.posX;
             this.frustumUpdatePosY = viewEntity.posY;
@@ -290,7 +290,7 @@ public class WorldRendererSchematic extends WorldRenderer
             this.viewFrustum.updateChunkPositions(viewEntity.posX, viewEntity.posZ);
         }
 
-        worldClient.profiler.endStartSection("litematica_renderlist_camera");
+        world.profiler.endStartSection("litematica_renderlist_camera");
         double x = viewEntity.lastTickPosX + (viewEntity.posX - viewEntity.lastTickPosX) * partialTicks;
         double y = viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks;
         double z = viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * partialTicks;
@@ -345,8 +345,8 @@ public class WorldRendererSchematic extends WorldRenderer
                 // Only render sub-chunks that are within the client's render distance, and that
                 // have been already properly loaded on the client
                 if (Math.abs(subChunk.getX() - centerChunkX) <= renderDistance &&
-                    Math.abs(subChunk.getZ() - centerChunkZ) <= renderDistance &&
-                    worldClient.getChunkProvider().getChunk(subChunk.getX(), subChunk.getZ(), false, false) != null)
+                        Math.abs(subChunk.getZ() - centerChunkZ) <= renderDistance &&
+                        world.getChunkProvider().getChunk(subChunk.getX(), subChunk.getZ(), false, false) != null)
                 {
                     BlockPos subChunkCornerPos = new BlockPos(subChunk.getX() << 4, subChunk.getY() << 4, subChunk.getZ() << 4);
                     RenderChunkSchematicVbo renderChunk = (RenderChunkSchematicVbo) ((IMixinViewFrustum) this.viewFrustum).invokeGetRenderChunk(subChunkCornerPos);
@@ -462,7 +462,7 @@ public class WorldRendererSchematic extends WorldRenderer
                 for (RenderChunkSchematicVbo renderChunk : this.renderInfos)
                 {
                     if ((renderChunk.getCompiledChunk().isLayerStarted(blockLayerIn) ||
-                        (renderChunk.getCompiledChunk() != CompiledChunk.DUMMY && renderChunk.hasOverlay())) && i++ < 15)
+                            (renderChunk.getCompiledChunk() != CompiledChunk.DUMMY && renderChunk.hasOverlay())) && i++ < 15)
                     {
                         this.renderDispatcher.updateTransparencyLater(renderChunk);
                     }
@@ -527,9 +527,9 @@ public class WorldRendererSchematic extends WorldRenderer
                         GlStateManager.disableClientState(GL11.GL_VERTEX_ARRAY);
                         break;
                     case UV:
-                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0 + index);
+                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0  + index);
                         GlStateManager.disableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0);
+                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0 );
                         break;
                     case COLOR:
                         GlStateManager.disableClientState(GL11.GL_COLOR_ARRAY);
@@ -598,9 +598,9 @@ public class WorldRendererSchematic extends WorldRenderer
                         GlStateManager.disableClientState(GL11.GL_VERTEX_ARRAY);
                         break;
                     case UV:
-                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0 + element.getIndex());
+                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0  + element.getIndex());
                         GlStateManager.disableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0);
+                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0 );
                         break;
                     case COLOR:
                         GlStateManager.disableClientState(GL11.GL_COLOR_ARRAY);
@@ -613,7 +613,7 @@ public class WorldRendererSchematic extends WorldRenderer
         this.mc.gameRenderer.disableLightmap();
     }
 
-    public boolean renderBlock(IBlockState state, BlockPos pos, IWorldReader world, BufferBuilder bufferBuilderIn)
+    public boolean renderBlock(IBlockState state, BlockPos pos, IWorldReader  world, BufferBuilder bufferBuilderIn)
     {
         try
         {
@@ -640,7 +640,7 @@ public class WorldRendererSchematic extends WorldRenderer
         {
             CrashReport crashreport = CrashReport.makeCrashReport(throwable, "Tesselating block in world");
             CrashReportCategory crashreportcategory = crashreport.makeCategory("Block being tesselated");
-            CrashReportCategory.addBlockInfo(crashreportcategory, pos, state);
+            CrashReportCategory.addBlockInfo(crashreportcategory, pos, null);
             throw new ReportedException(crashreport);
         }
     }
@@ -694,7 +694,8 @@ public class WorldRendererSchematic extends WorldRenderer
             this.renderManager.setRenderPosition(entityX, entityY, entityZ);
             this.mc.gameRenderer.enableLightmap();
             this.world.profiler.endStartSection("litematica_global");
-            this.countEntitiesTotal = this.world.func_212419_R();
+            List<Entity> entities = this.world.loadedEntityList;
+            this.countEntitiesTotal = entities.size();
 
             this.world.profiler.endStartSection("litematica_entities");
             List<Entity> entitiesOutlined = Lists.<Entity>newArrayList();
@@ -723,7 +724,7 @@ public class WorldRendererSchematic extends WorldRenderer
                             boolean sleeping = this.mc.getRenderViewEntity() instanceof EntityLivingBase ? ((EntityLivingBase)this.mc.getRenderViewEntity()).isPlayerSleeping() : false;
 
                             if ((entityTmp != this.mc.getRenderViewEntity() || this.mc.gameSettings.thirdPersonView != 0 || sleeping) &&
-                                (entityTmp.posY < 0.0D || entityTmp.posY >= 256.0D || this.world.isBlockLoaded(posMutable.setPos(entityTmp))))
+                                    (entityTmp.posY < 0.0D || entityTmp.posY >= 256.0D || this.world.isBlockLoaded(posMutable.setPos(entityTmp))))
                             {
                                 ++this.countEntitiesRendered;
                                 this.renderManager.renderEntityStatic(entityTmp, 0f, false);
@@ -759,7 +760,6 @@ public class WorldRendererSchematic extends WorldRenderer
                 this.world.profiler.endStartSection("entityOutlines");
                 this.entityOutlineFramebuffer.framebufferClear();
                 this.entityOutlinesRendered = entitiesOutlined.isEmpty() == false;
-
                 if (!entitiesOutlined.isEmpty())
                 {
                     GlStateManager.depthFunc(519);
@@ -767,18 +767,14 @@ public class WorldRendererSchematic extends WorldRenderer
                     this.entityOutlineFramebuffer.bindFramebuffer(false);
                     RenderHelper.disableStandardItemLighting();
                     this.renderManager.setRenderOutlines(true);
-
                     for (int i = 0; i < entitiesOutlined.size(); ++i)
                     {
                         this.renderManager.renderEntityStatic(entitiesOutlined.get(i), partialTicks, false);
                     }
-
                     this.renderManager.setRenderOutlines(false);
                     RenderHelper.enableStandardItemLighting();
                     GlStateManager.depthMask(false);
-
                     this.entityOutlineShader.render(partialTicks);
-
                     GlStateManager.enableLighting();
                     GlStateManager.depthMask(true);
                     GlStateManager.enableFog();
@@ -788,7 +784,6 @@ public class WorldRendererSchematic extends WorldRenderer
                     GlStateManager.enableDepth();
                     GlStateManager.enableAlpha();
                 }
-
                 this.mc.getFramebuffer().bindFramebuffer(false);
             }
             */
@@ -871,8 +866,8 @@ public class WorldRendererSchematic extends WorldRenderer
     @Override public void notifyLightSet(BlockPos pos) {}
     @Override public void playSoundToAllNearExcept(@Nullable EntityPlayer player, SoundEvent soundIn, SoundCategory category, double x, double y, double z, float volume, float pitch) {}
     @Override public void playRecord(SoundEvent soundIn, BlockPos pos) {}
-    @Override public void addParticle(IParticleData particle, boolean ignoreRange, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {}
-    @Override public void addParticle(IParticleData particle, boolean ignoreRange, boolean minimizeLevel, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {}
+    @Override public void addParticle(IParticleData p_addParticle_1_, boolean p_addParticle_2_, double p_addParticle_3_, double p_addParticle_5_, double p_addParticle_7_, double p_addParticle_9_, double p_addParticle_11_, double p_addParticle_13_) {}
+    @Override public void addParticle(IParticleData p_addParticle_1_, boolean p_addParticle_2_, boolean p_addParticle_3_, double p_addParticle_4_, double p_addParticle_6_, double p_addParticle_8_, double p_addParticle_10_, double p_addParticle_12_, double p_addParticle_14_) {}
     @Override public void onEntityAdded(Entity entityIn) {}
     @Override public void onEntityRemoved(Entity entityIn) {}
     @Override public void broadcastSound(int soundID, BlockPos pos, int data) {}

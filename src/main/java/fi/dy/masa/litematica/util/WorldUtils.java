@@ -18,6 +18,7 @@ import fi.dy.masa.litematica.mixin.IMixinKeyBinding;
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.litematica.schematic.SchematicaSchematic;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
+import fi.dy.masa.litematica.schematic.placement.SchematicPlacementManager;
 import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.tool.ToolMode;
@@ -33,6 +34,7 @@ import fi.dy.masa.malilib.interfaces.IStringConsumer;
 import fi.dy.masa.malilib.util.FileUtils;
 import fi.dy.masa.malilib.util.InfoUtils;
 import fi.dy.masa.malilib.util.LayerRange;
+import fi.dy.masa.malilib.util.SubChunkPos;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRedstoneComparator;
 import net.minecraft.block.BlockRedstoneRepeater;
@@ -62,10 +64,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.math.*;
 import net.minecraft.world.EnumDifficulty;
 import net.minecraft.world.GameType;
 import net.minecraft.world.World;
@@ -437,7 +436,7 @@ public class WorldUtils
             Hotkeys.EASY_PLACE_ACTIVATION.getKeybind().isKeybindHeld() &&
             KeybindMulti.isKeyDown(((IMixinKeyBinding)mc.gameSettings.keyBindUseItem).getInput().getKeyCode()))
         {
-            WorldUtils.handleEasyPlace(mc);
+            WorldUtils.doEasyPlaceAction(mc);
         }
     }
 
@@ -454,7 +453,7 @@ public class WorldUtils
         return result != EnumActionResult.PASS;
     }
 
-    public static EnumActionResult doEasyPlaceAction(Minecraft mc)
+    private static EnumActionResult doEasyPlaceAction(Minecraft mc)
     {
         RayTraceWrapper traceWrapper = RayTraceUtils.getGenericTrace(mc.world, mc.player, 6, true);
 
@@ -463,7 +462,7 @@ public class WorldUtils
             return EnumActionResult.PASS;
         }
 
-        if (traceWrapper != null && traceWrapper.getHitType() == RayTraceWrapper.HitType.SCHEMATIC_BLOCK)
+        if (traceWrapper.getHitType() == RayTraceWrapper.HitType.SCHEMATIC_BLOCK)
         {
             RayTraceResult trace = traceWrapper.getRayTraceResult();
             RayTraceResult traceVanilla = RayTraceUtils.getRayTraceFromEntity(mc.world, mc.player, false, 6);
@@ -501,7 +500,7 @@ public class WorldUtils
 
                 EnumHand hand = EntityUtils.getUsedHandForItem(mc.player, stack);
 
-                // Abort if the wrong item is in the player's hand
+                // Abort if a wrong item is in the player's hand
                 if (hand == null)
                 {
                     return EnumActionResult.FAIL;
@@ -538,6 +537,14 @@ public class WorldUtils
                 // Mark that this position has been handled (use the non-offset position that is checked above)
                 cacheEasyPlacePosition(pos);
 
+                // Fluid _blocks_ are not replaceable... >_>
+                BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, trace.getBlockPos(), trace.sideHit, (float) hitPos.x, (float) hitPos.y, (float) hitPos.z));
+                if (stateClient.isReplaceable(ctx) == false &&
+                    stateClient.getMaterial().isLiquid())
+                {
+                    pos = pos.offset(side, -1);
+                }
+
                 //System.out.printf("pos: %s side: %s, hit: %s\n", pos, side, hitPos);
                 mc.playerController.processRightClickBlock(mc.player, mc.world, pos, side, hitPos, hand);
 
@@ -551,9 +558,9 @@ public class WorldUtils
                         mc.playerController.processRightClickBlock(mc.player, mc.world, pos, side, hitPos, hand);
                     }
                 }
-
-                return EnumActionResult.SUCCESS;
             }
+
+            return EnumActionResult.SUCCESS;
         }
         else if (traceWrapper.getHitType() == RayTraceWrapper.HitType.VANILLA)
         {
@@ -682,7 +689,7 @@ public class WorldUtils
 
         if (cancel)
         {
-            InfoUtils.printActionbarMessage("litematica.message.placement_restriction_in_effect");
+            InfoUtils.showGuiOrInGameMessage(Message.MessageType.WARNING, "litematica.message.placement_restriction_fail");
         }
 
         return cancel;
@@ -696,7 +703,7 @@ public class WorldUtils
      * @param mc
      * //@param doEasyPlace
      * //@param restrictPlacement
-     * @return
+     * @return true if the use action should be cancelled
      */
     private static boolean placementRestrictionInEffect(Minecraft mc)
     {
@@ -705,12 +712,36 @@ public class WorldUtils
         if (trace.type == RayTraceResult.Type.BLOCK)
         {
             BlockPos pos = trace.getBlockPos();
+            Vec3d hitIn = trace.hitVec;
             IBlockState stateClient = mc.world.getBlockState(pos);
+
+            BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, new ItemStack(stateClient.getBlock()), pos, trace.sideHit, (float)hitIn.x, (float)hitIn.y, (float)hitIn.z));
+            if (stateClient.isReplaceable(ctx) == false)
+            {
+                pos = pos.offset(trace.sideHit);
+                stateClient = mc.world.getBlockState(pos);
+                ctx = new BlockItemUseContext(new ItemUseContext(mc.player, new ItemStack(stateClient.getBlock()), pos, trace.sideHit, (float)hitIn.x, (float)hitIn.y, (float)hitIn.z));
+            }
+
+            // Placement position is already occupied
+            if (stateClient.isReplaceable(ctx) == false &&
+                stateClient.getMaterial().isLiquid() == false)
+            {
+                return true;
+            }
+
             World worldSchematic = SchematicWorldHandler.getSchematicWorld();
             LayerRange range = DataManager.getRenderLayerRange();
 
-            // There should not be anything in the targeted position
-            if (range.isPositionWithinRange(pos) == false || worldSchematic.isAirBlock(pos))
+            // The targeted position is outside the current render range
+            if (worldSchematic.isAirBlock(pos) == false && range.isPositionWithinRange(pos) == false)
+            {
+                return true;
+            }
+
+            // There should not be anything in the targeted position,
+            // and the position is within or close to a schematic sub-region
+            if (worldSchematic.isAirBlock(pos) && isPositionWithinRangeOfSchematicRegions(pos, 2))
             {
                 return true;
             }
@@ -719,12 +750,49 @@ public class WorldUtils
             ItemStack stack = MaterialCache.getInstance().getItemForState(stateSchematic);
 
             // The player is holding the wrong item for the targeted position
-            if (stack.isEmpty() || EntityUtils.getUsedHandForItem(mc.player, stack) == null)
+            if (stack.isEmpty() == false && EntityUtils.getUsedHandForItem(mc.player, stack) == null)
             {
                 return true;
             }
+        }
 
-            return true;
+        return false;
+    }
+
+    public static boolean isPositionWithinRangeOfSchematicRegions(BlockPos pos, int range)
+    {
+        SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
+        final int minCX = (pos.getX() - range) >> 4;
+        final int minCY = (pos.getY() - range) >> 4;
+        final int minCZ = (pos.getZ() - range) >> 4;
+        final int maxCX = (pos.getX() + range) >> 4;
+        final int maxCY = (pos.getY() + range) >> 4;
+        final int maxCZ = (pos.getZ() + range) >> 4;
+        final int x = pos.getX();
+        final int y = pos.getY();
+        final int z = pos.getZ();
+
+        for (int cy = minCY; cy <= maxCY; ++cy)
+        {
+            for (int cz = minCZ; cz <= maxCZ; ++cz)
+            {
+                for (int cx = minCX; cx <= maxCX; ++cx)
+                {
+                    List<MutableBoundingBox> boxes = manager.getTouchedBoxesInSubChunk(new SubChunkPos(cx, cy, cz));
+
+                    for (int i = 0; i < boxes.size(); ++i)
+                    {
+                        MutableBoundingBox box = boxes.get(i);
+
+                        if (x >= box.minX - range && x <= box.maxX + range &&
+                            y >= box.minY - range && y <= box.maxY + range &&
+                            z >= box.minZ - range && z <= box.maxZ + range)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
         }
 
         return false;

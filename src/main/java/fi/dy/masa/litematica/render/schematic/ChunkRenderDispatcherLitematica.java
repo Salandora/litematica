@@ -36,7 +36,7 @@ public class ChunkRenderDispatcherLitematica
 
     private final List<Thread> listWorkerThreads = Lists.<Thread>newArrayList();
     private final List<ChunkRenderWorkerLitematica> listThreadedWorkers = new ArrayList<>();
-    private final PriorityBlockingQueue<ChunkRenderTaskSchematic> queueChunkUpdates = Queues.newPriorityBlockingQueue();
+    private final PriorityBlockingQueue<ChunkCompileTaskGeneratorSchematic> queueChunkUpdates = Queues.newPriorityBlockingQueue();
     private final BlockingQueue<BufferBuilderCache> queueFreeRenderBuilders;
     private final WorldVertexBufferUploader displayListUploader = new WorldVertexBufferUploader();
     private final VertexBufferUploader vertexBufferUploader = new VertexBufferUploader();
@@ -87,7 +87,7 @@ public class ChunkRenderDispatcherLitematica
 
             if (this.listWorkerThreads.isEmpty())
             {
-                ChunkRenderTaskSchematic generator = this.queueChunkUpdates.poll();
+                ChunkCompileTaskGeneratorSchematic generator = this.queueChunkUpdates.poll();
 
                 if (generator != null)
                 {
@@ -130,7 +130,7 @@ public class ChunkRenderDispatcherLitematica
 
         try
         {
-            final ChunkRenderTaskSchematic generator = renderChunk.makeCompileTaskChunkSchematic();
+            final ChunkCompileTaskGeneratorSchematic generator = renderChunk.makeCompileTaskChunkSchematic();
 
             generator.addFinishRunnable(new Runnable()
             {
@@ -165,7 +165,7 @@ public class ChunkRenderDispatcherLitematica
 
         try
         {
-            ChunkRenderTaskSchematic generator = chunkRenderer.makeCompileTaskChunkSchematic();
+            ChunkCompileTaskGeneratorSchematic generator = chunkRenderer.makeCompileTaskChunkSchematic();
 
             try
             {
@@ -216,7 +216,7 @@ public class ChunkRenderDispatcherLitematica
         return this.queueFreeRenderBuilders.take();
     }
 
-    public ChunkRenderTaskSchematic getNextChunkUpdate() throws InterruptedException
+    public ChunkCompileTaskGeneratorSchematic getNextChunkUpdate() throws InterruptedException
     {
         return this.queueChunkUpdates.take();
     }
@@ -229,7 +229,7 @@ public class ChunkRenderDispatcherLitematica
 
         try
         {
-            final ChunkRenderTaskSchematic generator = renderChunk.makeCompileTaskTransparencySchematic();
+            final ChunkCompileTaskGeneratorSchematic generator = renderChunk.makeCompileTaskTransparencySchematic();
 
             if (generator == null)
             {
@@ -353,7 +353,7 @@ public class ChunkRenderDispatcherLitematica
     {
         while (this.queueChunkUpdates.isEmpty() == false)
         {
-            ChunkRenderTaskSchematic generator = this.queueChunkUpdates.poll();
+            ChunkCompileTaskGeneratorSchematic generator = this.queueChunkUpdates.poll();
 
             if (generator != null)
             {

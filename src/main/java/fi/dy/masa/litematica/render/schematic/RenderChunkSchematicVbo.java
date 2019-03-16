@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import javax.annotation.Nullable;
 
+import net.minecraft.fluid.IFluidState;
 import net.minecraft.init.Blocks;
 import org.lwjgl.opengl.GL11;
 import com.google.common.collect.Sets;
@@ -53,7 +54,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
     private final List<MutableBoundingBox> boxes = new ArrayList<>();
     private final EnumSet<OverlayRenderType> existingOverlays = EnumSet.noneOf(OverlayRenderType.class);
     private boolean hasOverlay = false;
-    private ChunkRenderTaskSchematic compileTask;
+    private ChunkCompileTaskGeneratorSchematic compileTask;
 
     private ChunkCacheSchematic schematicWorldView;
     private ChunkCacheSchematic clientWorldView;
@@ -106,7 +107,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
         }
     }
 
-    public void resortTransparency(float x, float y, float z, ChunkRenderTaskSchematic generator)
+    public void resortTransparency(float x, float y, float z, ChunkCompileTaskGeneratorSchematic generator)
     {
         CompiledChunkSchematic compiledChunk = (CompiledChunkSchematic) generator.getCompiledChunk();
         BufferBuilderCache buffers = generator.getBufferCache();
@@ -154,14 +155,14 @@ public class RenderChunkSchematicVbo extends RenderChunk
         }
     }
 
-    public void rebuildChunk(float x, float y, float z, ChunkRenderTaskSchematic generator)
+    public void rebuildChunk(float x, float y, float z, ChunkCompileTaskGeneratorSchematic generator)
     {
         this.compiledChunk = new CompiledChunkSchematic();
         generator.getLock().lock();
 
         try
         {
-            if (generator.getStatus() != ChunkRenderTaskSchematic.Status.COMPILING)
+            if (generator.getStatus() != ChunkCompileTaskGeneratorSchematic.Status.COMPILING)
             {
                 return;
             }
@@ -284,7 +285,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
             }
 
             // TODO change when the fluids become separate
-            /*IFluidState fluidState = stateSchematic.getFluidState();
+            IFluidState fluidState = stateSchematic.getFluidState();
 
             if (fluidState.isEmpty() == false)
             {
@@ -298,8 +299,8 @@ public class RenderChunkSchematicVbo extends RenderChunk
                     this.preRenderBlocks(bufferSchematic, this.getPosition());
                 }
 
-                usedLayers[layerIndex] |= this.worldRenderer.renderFluid(fluidState, posMutable, this.schematicWorldView, bufferSchematic);
-            }*/
+                usedLayers[layerIndex] |= this.worldRenderer.renderFluid(fluidState, pos, this.schematicWorldView, bufferSchematic);
+            }
 
             BlockRenderLayer layer = Configs.Visuals.RENDER_BLOCKS_AS_TRANSLUCENT.getBooleanValue() ? BlockRenderLayer.TRANSLUCENT : blockSchematic.getRenderLayer();
             int layerIndex = layer.ordinal();
@@ -689,16 +690,16 @@ public class RenderChunkSchematicVbo extends RenderChunk
         buffer.finishDrawing();
     }
 
-    public ChunkRenderTaskSchematic makeCompileTaskChunkSchematic()
+    public ChunkCompileTaskGeneratorSchematic makeCompileTaskChunkSchematic()
     {
         this.getLockCompileTask().lock();
-        ChunkRenderTaskSchematic generator = null;
+        ChunkCompileTaskGeneratorSchematic generator = null;
 
         try
         {
             //if (GuiScreen.isCtrlKeyDown()) System.out.printf("makeCompileTaskChunk()\n");
             this.finishCompileTask();
-            this.compileTask = new ChunkRenderTaskSchematic(this, ChunkRenderTaskSchematic.Type.REBUILD_CHUNK, this.getDistanceSq());
+            this.compileTask = new ChunkCompileTaskGeneratorSchematic(this, ChunkCompileTaskGeneratorSchematic.Type.REBUILD_CHUNK, this.getDistanceSq());
             this.rebuildWorldView();
             generator = this.compileTask;
         }
@@ -711,20 +712,20 @@ public class RenderChunkSchematicVbo extends RenderChunk
     }
 
     @Nullable
-    public ChunkRenderTaskSchematic makeCompileTaskTransparencySchematic()
+    public ChunkCompileTaskGeneratorSchematic makeCompileTaskTransparencySchematic()
     {
         this.getLockCompileTask().lock();
 
         try
         {
-            if (this.compileTask == null || this.compileTask.getStatus() != ChunkRenderTaskSchematic.Status.PENDING)
+            if (this.compileTask == null || this.compileTask.getStatus() != ChunkCompileTaskGeneratorSchematic.Status.PENDING)
             {
-                if (this.compileTask != null && this.compileTask.getStatus() != ChunkRenderTaskSchematic.Status.DONE)
+                if (this.compileTask != null && this.compileTask.getStatus() != ChunkCompileTaskGeneratorSchematic.Status.DONE)
                 {
                     this.compileTask.finish();
                 }
 
-                this.compileTask = new ChunkRenderTaskSchematic(this, ChunkRenderTaskSchematic.Type.RESORT_TRANSPARENCY, this.getDistanceSq());
+                this.compileTask = new ChunkCompileTaskGeneratorSchematic(this, ChunkCompileTaskGeneratorSchematic.Type.RESORT_TRANSPARENCY, this.getDistanceSq());
                 this.compileTask.setCompiledChunk(this.compiledChunk);
 
                 return this.compileTask;
@@ -744,7 +745,7 @@ public class RenderChunkSchematicVbo extends RenderChunk
 
         try
         {
-            if (this.compileTask != null && this.compileTask.getStatus() != ChunkRenderTaskSchematic.Status.DONE)
+            if (this.compileTask != null && this.compileTask.getStatus() != ChunkCompileTaskGeneratorSchematic.Status.DONE)
             {
                 this.compileTask.finish();
                 this.compileTask = null;

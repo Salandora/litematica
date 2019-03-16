@@ -22,6 +22,7 @@ import fi.dy.masa.litematica.schematic.projects.SchematicProjectsManager;
 import fi.dy.masa.litematica.selection.AreaSelectionSimple;
 import fi.dy.masa.litematica.selection.SelectionManager;
 import fi.dy.masa.litematica.tool.ToolMode;
+import fi.dy.masa.litematica.tool.ToolModeData;
 import fi.dy.masa.litematica.util.SchematicWorldRefresher;
 import fi.dy.masa.malilib.gui.interfaces.IDirectoryCache;
 import fi.dy.masa.malilib.util.FileUtils;
@@ -333,6 +334,11 @@ public class DataManager implements IDirectoryCache
         {
             this.areaSimple = AreaSelectionSimple.fromJson(obj.get("area_simple").getAsJsonObject());
         }
+
+        if (JsonUtils.hasObject(obj, "tool_mode_data"))
+        {
+            this.toolModeDataFromJson(obj.get("tool_mode_data").getAsJsonObject());
+        }
     }
 
     private JsonObject toJson()
@@ -345,8 +351,24 @@ public class DataManager implements IDirectoryCache
         obj.add("operation_mode", new JsonPrimitive(this.operationMode.name()));
         obj.add("render_range", this.renderRange.toJson());
         obj.add("area_simple", this.areaSimple.toJson());
+        obj.add("tool_mode_data", this.toolModeDataToJson());
 
         return obj;
+    }
+
+    private JsonObject toolModeDataToJson()
+    {
+        JsonObject obj = new JsonObject();
+        obj.add("delete", ToolModeData.DELETE.toJson());
+        return obj;
+    }
+
+    private void toolModeDataFromJson(JsonObject obj)
+    {
+        if (JsonUtils.hasObject(obj, "delete"))
+        {
+            ToolModeData.DELETE.fromJson(obj.get("delete").getAsJsonObject());
+        }
     }
 
     public static File getCurrentConfigDirectory()
@@ -368,7 +390,19 @@ public class DataManager implements IDirectoryCache
 
     public static File getAreaSelectionsBaseDirectory()
     {
-        File dir = FileUtils.getCanonicalFileIfPossible(new File(getCurrentConfigDirectory(), "area_selections"));
+        File dir;
+        String name = StringUtils.getWorldOrServerName();
+
+        if (Configs.Generic.AREAS_PER_WORLD.getBooleanValue() && name != null)
+        {
+            // The 'area_selections' sub-directory is to prevent showing the world name or server IP in the browser,
+            // as the root directory name is shown in the navigation widget
+            dir = FileUtils.getCanonicalFileIfPossible(new File(new File(new File(getCurrentConfigDirectory(), "area_selections_per_world"), name), "area_selections"));
+        }
+        else
+        {
+            dir = FileUtils.getCanonicalFileIfPossible(new File(getCurrentConfigDirectory(), "area_selections"));
+        }
 
         if (dir.exists() == false && dir.mkdirs() == false)
         {

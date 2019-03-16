@@ -24,6 +24,7 @@ public class LitematicaRenderer
     private static final LitematicaRenderer INSTANCE = new LitematicaRenderer();
 
     private static final ShaderProgram SHADER_ALPHA = new ShaderProgram("litematica", null, "shaders/alpha.frag");
+
     private Minecraft mc;
     private WorldRendererSchematic worldRenderer;
     private int frameCount;
@@ -36,6 +37,14 @@ public class LitematicaRenderer
     private boolean renderPiecewiseBlocks;
     private boolean renderPiecewisePrepared;
     private boolean translucentSchematic;
+
+    static
+    {
+        int program = SHADER_ALPHA.getProgram();
+        GL20.glUseProgram(program);
+        GL20.glUniform1i(GL20.glGetUniformLocation(program, "texture"), 0);
+        GL20.glUseProgram(0);
+    }
 
     public static LitematicaRenderer getInstance()
     {

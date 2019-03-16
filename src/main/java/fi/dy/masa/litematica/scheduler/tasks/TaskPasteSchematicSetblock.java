@@ -2,11 +2,11 @@ package fi.dy.masa.litematica.scheduler.tasks;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.MultimapBuilder;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.render.infohud.IInfoHudRenderer;
 import fi.dy.masa.litematica.render.infohud.InfoHud;
@@ -39,8 +39,9 @@ import net.minecraft.world.chunk.Chunk;
 
 public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRenderer
 {
-    private final ArrayListMultimap<ChunkPos, MutableBoundingBox> boxesInChunks = ArrayListMultimap.create();
+    private final ListMultimap<ChunkPos, MutableBoundingBox> boxesInChunks = MultimapBuilder.hashKeys().arrayListValues().build();
     private final List<String> infoHudLines = new ArrayList<>();
+    private final List<ChunkPos> chunks = new ArrayList<>();
     private final int maxCommandsPerTick;
     private final boolean changedBlockOnly;
     private int sentCommandsThisTick;
@@ -62,6 +63,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         {
             ImmutableCollection<MutableBoundingBox> boxes = placement.getBoxesWithinChunk(pos.x, pos.z).values();
             this.boxesInChunks.putAll(pos, boxes);
+            this.chunks.add(pos);
         }
 
         InfoHud.getInstance().addInfoHudRenderer(this, true);
@@ -99,10 +101,10 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
 
         if (this.boxesInChunks.isEmpty() == false)
         {
-            Set<ChunkPos> keys = new HashSet<>(this.boxesInChunks.keySet());
-
-            for (ChunkPos pos : keys)
+            for (int chunkIndex = 0; chunkIndex < this.chunks.size(); ++chunkIndex)
             {
+                ChunkPos pos = this.chunks.get(chunkIndex);
+
                 if (this.canProcessChunk(pos, worldSchematic, worldClient))
                 {
                     List<MutableBoundingBox> boxes = this.boxesInChunks.get(pos);
@@ -119,6 +121,8 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
                             if (boxes.isEmpty())
                             {
                                 this.boxesInChunks.remove(pos, boxes);
+                                this.chunks.remove(chunkIndex);
+                                --chunkIndex;
                                 ++processed;
                             }
                         }
@@ -171,33 +175,27 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
     protected boolean processBox(ChunkPos pos, MutableBoundingBox box,
             WorldSchematic worldSchematic, WorldClient worldClient, EntityPlayerSP player)
     {
-        final int minX = box.minX;
-        final int minY = box.minY;
-        final int minZ = box.minZ;
-        final int maxX = box.maxX;
-        final int maxY = box.maxY;
-        final int maxZ = box.maxZ;
         BlockPos.MutableBlockPos posMutable = new BlockPos.MutableBlockPos();
         Chunk chunkSchematic = worldSchematic.getChunk(pos.x, pos.z);
         Chunk chunkClient = worldClient.getChunk(pos.x, pos.z);
 
         if (this.boxInProgress == false)
         {
-            this.currentX = minX;
-            this.currentY = minY;
-            this.currentZ = minZ;
+            this.currentX = box.minX;
+            this.currentY = box.minY;
+            this.currentZ = box.minZ;
             this.boxInProgress = true;
         }
 
-        for (; this.currentZ <= maxZ; ++this.currentZ)
+        for (; this.currentZ <= box.maxZ; ++this.currentZ)
         {
-            for (; this.currentX <= maxX; ++this.currentX)
+            for (; this.currentX <= box.maxX; ++this.currentX)
             {
-                for (; this.currentY <= maxY; ++this.currentY)
+                for (; this.currentY <= box.maxY; ++this.currentY)
                 {
                     posMutable.setPos(this.currentX, this.currentY, this.currentZ);
                     IBlockState stateSchematic = chunkSchematic.getBlockState(posMutable);
-                    IBlockState stateClient = chunkClient.getBlockState(posMutable); //.getActualState(worldClient, posMutable);
+                    IBlockState stateClient = chunkClient.getBlockState(posMutable);
 
                     if (stateSchematic.getBlock() == Blocks.AIR && stateClient.getBlock() == Blocks.AIR)
                     {
@@ -211,7 +209,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
                         if (++this.sentCommandsThisTick >= this.maxCommandsPerTick)
                         {
                             // All finished for this box
-                            if (this.currentX >= maxX && this.currentY >= maxY && this.currentZ >= maxZ)
+                            if (this.currentX >= box.maxX && this.currentY >= box.maxY && this.currentZ >= box.maxZ)
                             {
                                 this.summonEntities(box, worldSchematic, player);
                                 this.boxInProgress = false;
@@ -219,16 +217,17 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
                             }
                             else
                             {
+                                ++this.currentY;
                                 return false;
                             }
                         }
                     }
                 }
 
-                this.currentY = minY;
+                this.currentY = box.minY;
             }
 
-            this.currentX = minX;
+            this.currentX = box.minX;
         }
 
         this.summonEntities(box, worldSchematic, player);

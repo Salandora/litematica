@@ -5,8 +5,11 @@ import java.util.List;
 import javax.annotation.Nullable;
 import com.google.common.collect.ImmutableList;
 import fi.dy.masa.litematica.data.DataManager;
+import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.Box;
+import fi.dy.masa.litematica.tool.ToolMode;
+import fi.dy.masa.litematica.tool.ToolModeData;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.util.InfoUtils;
 import net.minecraft.block.Block;
@@ -162,22 +165,50 @@ public class ToolUtils
 
     public static void killEntitiesCommand(Collection<Box> boxes, Minecraft mc)
     {
+        World world = mc.world;
+
+        if (world == null)
+        {
+            return;
+        }
+
         for (Box box : boxes)
         {
             BlockPos posMin = PositionUtils.getMinCorner(box.getPos1(), box.getPos2());
             BlockPos posMax = PositionUtils.getMaxCorner(box.getPos1(), box.getPos2());
+            AxisAlignedBB bb = new AxisAlignedBB(posMin, posMax.add(1, 1, 1));
+            List<Entity> entities = world.getEntitiesWithinAABBExcludingEntity(mc.player, bb);
 
-            String cmd = String.format("/kill @e[type=!player,x=%d,y=%d,z=%d,dx=%d,dy=%d,dz=%d]",
-                    posMin.getX(), posMin.getY(), posMin.getZ(),
-                    posMax.getX() - posMin.getX() + 1, posMax.getY() - posMin.getY() + 1, posMax.getZ() - posMin.getZ() + 1);
+            if (entities.size() > 0)
+            {
+                String cmd = String.format("/kill @e[type=!player,x=%d,y=%d,z=%d,dx=%d,dy=%d,dz=%d]",
+                        posMin.getX(), posMin.getY(), posMin.getZ(),
+                        posMax.getX() - posMin.getX() + 1, posMax.getY() - posMin.getY() + 1, posMax.getZ() - posMin.getZ() + 1);
 
-            mc.player.sendChatMessage(cmd);
+                mc.player.sendChatMessage(cmd);
+            }
         }
     }
 
     public static void deleteSelectionVolumes(boolean removeEntities, Minecraft mc)
     {
-        deleteSelectionVolumes(DataManager.getSelectionManager().getCurrentSelection(), removeEntities, mc);
+        AreaSelection area = null;
+
+        if (DataManager.getToolMode() == ToolMode.DELETE && ToolModeData.DELETE.getUsePlacement())
+        {
+            SchematicPlacement placement = DataManager.getSchematicPlacementManager().getSelectedSchematicPlacement();
+
+            if (placement != null)
+            {
+                area = AreaSelection.fromPlacement(placement);
+            }
+        }
+        else
+        {
+            area = DataManager.getSelectionManager().getCurrentSelection();
+        }
+
+        deleteSelectionVolumes(area, removeEntities, mc);
     }
 
     public static void deleteSelectionVolumes(@Nullable final AreaSelection area, boolean removeEntities, Minecraft mc)
@@ -204,7 +235,7 @@ public class ToolUtils
                             }
                             else
                             {
-                                InfoUtils.showGuiOrActionBarMessage(MessageType.ERROR, "litematica.message.area_clear_fail");
+                                InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.area_clear_fail");
                             }
                         }
                     });
@@ -218,12 +249,12 @@ public class ToolUtils
                 }
                 else
                 {
-                    InfoUtils.showGuiOrActionBarMessage(MessageType.ERROR, "litematica.message.area_clear_fail");
+                    InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.area_clear_fail");
                 }
             }
             else
             {
-                InfoUtils.showGuiOrActionBarMessage(MessageType.ERROR, "litematica.message.error.no_area_selected");
+                InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_area_selected");
             }
         }
         else

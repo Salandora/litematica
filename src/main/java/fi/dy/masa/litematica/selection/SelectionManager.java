@@ -103,10 +103,11 @@ public class SelectionManager
     @Nullable
     public AreaSelection getCurrentSelection()
     {
-        if (DataManager.getSchematicProjectsManager().hasProjectOpen())
+        SchematicProject project = DataManager.getSchematicProjectsManager().getCurrentProject();
+
+        if (project != null)
         {
-            SchematicProject project = DataManager.getSchematicProjectsManager().getCurrentProject();
-            return project != null ? project.getSelection() : null;
+            return project.getSelection();
         }
 
         return this.getSelection(this.currentSelectionId);
@@ -291,9 +292,11 @@ public class SelectionManager
 
     public void setCurrentSelection(@Nullable String selectionId)
     {
-        if (selectionId == null || this.selections.containsKey(selectionId))
+        this.currentSelectionId = selectionId;
+
+        if (this.currentSelectionId != null)
         {
-            this.currentSelectionId = selectionId;
+            this.getOrLoadSelection(this.currentSelectionId);
         }
     }
 
@@ -394,7 +397,7 @@ public class SelectionManager
 
         File file = new File(dir, safeName + ".json");
         String selectionId = file.getAbsolutePath();
-        AreaSelection selection = this.getOrLoadSelection(selectionId);
+        AreaSelection selection = this.getOrLoadSelectionReadOnly(selectionId);
 
         if (selection == null)
         {
@@ -722,10 +725,10 @@ public class SelectionManager
     @Nullable
     public GuiBase getEditGui()
     {
+        AreaSelection selection = this.getCurrentSelection();
+
         if (this.getSelectionMode() == SelectionMode.NORMAL)
         {
-            AreaSelection selection = this.getCurrentSelection();
-
             if (selection != null)
             {
                 return new GuiAreaSelectionEditorNormal(selection);
@@ -738,7 +741,7 @@ public class SelectionManager
         }
         else
         {
-            return new GuiAreaSelectionEditorSimple(this.getSimpleSelection());
+            return new GuiAreaSelectionEditorSimple(selection);
         }
     }
 

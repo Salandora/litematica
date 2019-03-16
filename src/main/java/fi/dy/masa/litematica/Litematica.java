@@ -21,7 +21,7 @@ import fi.dy.masa.malilib.interfaces.IInitializationHandler;
 import fi.dy.masa.malilib.interfaces.IRenderer;
 import net.minecraft.client.Minecraft;
 
-public class Litematica implements ClientTickable, InitializationListener
+public class Litematica implements InitializationListener
 {
     public static final Logger logger = LogManager.getLogger(Reference.MOD_ID);
 
@@ -32,13 +32,6 @@ public class Litematica implements ClientTickable, InitializationListener
         Mixins.addConfiguration("mixins.litematica.json");
 
         InitializationHandler.getInstance().registerInitializationHandler(new InitHandler());
-    }
-
-    @Override
-    public void clientTick(Minecraft mc)
-    {
-        InputHandler.onTick();
-        WorldUtils.easyPlaceOnUseTick(mc);
     }
 
     private static class InitHandler implements IInitializationHandler

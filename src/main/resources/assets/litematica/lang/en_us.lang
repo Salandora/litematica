@@ -180,7 +180,7 @@ litematica.gui.button.delete=Delete
 litematica.gui.button.disable=Disable
 litematica.gui.button.enable=Enable
 litematica.gui.button.import=Import
-litematica.gui.button.load_schematic_to_memory=Load Schematic to memory
+litematica.gui.button.load_schematic_to_memory=Load Schematic
 litematica.gui.button.mirror_value=Mirror: %s
 litematica.gui.button.move_to_player=Move to player
 litematica.gui.button.ok=Ok
@@ -242,15 +242,17 @@ litematica.gui.label.placement_settings.placement_origin=Placement origin
 litematica.gui.label.render_layers.hotkey=Hotkey
 litematica.gui.label.render_layers.hover.hotkey=The move layer hotkeys will affect this boundary.\nIf both are unselected, then the hotkeys will affect\nthe boundary that is closest to the player.
 
-litematica.gui.label.schematic_info.author=Author: §f%s§r
+litematica.gui.label.schematic_info.schematic_author=Schematic by: §f%s§r
 litematica.gui.label.schematic_info.description=Description:
 litematica.gui.label.schematic_info.enclosing_size=Enclosing size:
+litematica.gui.label.schematic_info.enclosing_size_value=Enclosing size: §f%s§r
 litematica.gui.label.schematic_info.name=Name:
 litematica.gui.label.schematic_info.region_count=Regions: §f%d§r
 litematica.gui.label.schematic_info.time_created=Created: §f%s§r
 litematica.gui.label.schematic_info.time_modified=Modified: §f%s§r
-litematica.gui.label.schematic_info.total_volume=Total volume: §f%d§r blocks
 litematica.gui.label.schematic_info.total_blocks=Total blocks: §f%d§r
+litematica.gui.label.schematic_info.total_blocks_and_volume=Blocks/Volume: §f%d§r/§f%d§r
+litematica.gui.label.schematic_info.total_volume=Total volume: §f%d§r blocks
 
 litematica.gui.label.schematic_load.checkbox.create_placement=Create a placement
 litematica.gui.label.schematic_load.hoverinfo.create_placement=Immediately create a new placement\nand select that placement
@@ -311,7 +313,7 @@ litematica.gui.title.create_area_selection_from_placement=Create a new Area Sele
 litematica.gui.title.create_directory=Create a new directory
 litematica.gui.title.create_in_memory_schematic=Create an in-memory Schematic
 litematica.gui.title.create_schematic_project=Create a new schematic project
-litematica.gui.title.litematica_main_menu=Litematica Main Menu
+litematica.gui.title.litematica_main_menu=Litematica %s
 litematica.gui.title.load_schematic=Load Schematic
 litematica.gui.title.manage_loaded_schematics=Manage loaded Schematics
 litematica.gui.title.manage_schematic_placements=Manage Schematic Placements
@@ -346,6 +348,10 @@ litematica.hud.area_selection.selected_area_simple=Area [§6Simple mode§r]: %s
 litematica.hud.area_selection.selected_sub_region=Sub-region: %s
 litematica.hud.area_selection.selection_corners_mode=Corners Mode: %s
 
+litematica.hud.delete.target_mode=Delete target mode: %s
+litematica.hud.delete.target_mode.area=Current Area
+litematica.hud.delete.target_mode.placement=Current Placement
+
 litematica.hud.misc.easy_place_mode_enabled=Easy Place mode §aON§r
 litematica.hud.misc.none_brackets=<none>
 litematica.hud.misc.placement_restriction_mode_enabled=Placement Restriction mode §aON§r
@@ -353,6 +359,7 @@ litematica.hud.misc.render_layer_mode=Layer Mode: %s - %s
 litematica.hud.misc.render_layer_mode_all=Layer Mode: %s
 litematica.hud.misc.renderer_status=Renderers: A: %s S: %s B: %s O: %s SEL: %s
 
+litematica.hud.schematic_placement.hover_info.lock_coordinate=Lock this coordinate\nThis allows changing the other coordinates\nwithout affecting the locked ones
 litematica.hud.schematic_placement.hover_info.placement_locked=This placement has been locked and can't\nbe modified without unlocking it first
 litematica.hud.schematic_placement.hover_info.placement_modified=This placement has been modified
 litematica.hud.schematic_placement.hover_info.placement_sub_region_modified=This sub-region has been modified
@@ -391,6 +398,7 @@ litematica.message.error.invalid_schematic_name=Invalid schematic name '%s'
 litematica.message.error.no_area_selected=§cNo area selected§r
 litematica.message.error.no_placement_selected=§cNo placement selected§r
 litematica.message.error.only_works_in_single_player=§cThis operation only works in single player§r
+litematica.message.error.placement_paste_outside_world=The placement can't be pasted in the current position, because it goes outside the world bounds
 litematica.message.error.schematic_paste_failed=§cSchematic Paste to world failed§r
 litematica.message.error.schematic_save_failed=Failed to save schematic to file '%s'
 litematica.message.error.schematic_save_interrupted=Schematic saving interrupted or stopped
@@ -409,12 +417,10 @@ litematica.message.material_list.material_cache_cleared=Material Cache cleared
 litematica.message.material_list_written_to_file=Material list written to file '%s'
 litematica.message.moved_area_origin=Moved the area origin point from %s => %s
 litematica.message.moved_selection=Moved the current selection from %s => %s
-
 litematica.message.placement.cant_modify_is_locked=§cThe placement is locked and can't be modified§r
 litematica.message.placement.moved_placement_origin=Moved placement origin from %s => %s
 litematica.message.placement.moved_subregion_to=Moved sub-region to %s
-litematica.message.placement_restriction_in_effect=Action prevented by Placement Restriction mode
-
+litematica.message.placement_restriction_fail=Action prevented by Placement Restriction mode
 litematica.message.removed_area_origin=Removed the explicit/manual area origin point
 litematica.message.removed_selection_box=Removed selection box %s
 litematica.message.scheduled_task_added=Scheduled task added...
@@ -427,7 +433,6 @@ litematica.message.schematic_read_from_file_success=Schematic loaded from file '
 litematica.message.schematic_rendering_refreshed=Schematic rendering refreshed
 litematica.message.schematic_saved_as=Schematic saved as '%s'
 litematica.message.schematic_save_task_created=Schematic saving task created
-
 litematica.message.set_area_origin=Set the area origin point to %s
 litematica.message.set_selection_box_point=Set/moved point %d to %s
 litematica.message.toggled=Toggled %s %s
