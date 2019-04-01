@@ -6,6 +6,7 @@ import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.gui.GuiMainMenu.ButtonListenerChangeMenu;
 import fi.dy.masa.litematica.gui.widgets.WidgetListSelectionSubRegions;
 import fi.dy.masa.litematica.gui.widgets.WidgetSelectionSubRegion;
+import fi.dy.masa.litematica.materials.MaterialListAreaAnalyzer;
 import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.selection.SelectionManager;
@@ -140,10 +141,17 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         ButtonGeneric button;
 
         y = this.height - 26;
+
+        if (Configs.Visuals.ENABLE_AREA_SELECTION_RENDERING.getBooleanValue() == false)
+        {
+            this.addLabel(16, y - 22, 120, 12, 0xFFFFAA00, I18n.format("litematica.warning.area_editor.area_rendering_disabled"));
+        }
+
         ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER;
         String label = I18n.format(type.getLabelKey());
         button = new ButtonGeneric(x, y, -1, 20, label, type.getIcon());
-        this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
+        x += this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent())).getButton().getWidth() + 4;
+        this.createButton(x, y, -1, ButtonListener.Type.ANALYZE_AREA);
 
         type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
         label = I18n.format(type.getLabelKey());
@@ -454,11 +462,23 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
                     SchematicUtils.saveSchematic(GuiScreen.isShiftKeyDown());
                     break;
 
+                case ANALYZE_AREA:
+                {
+                    MaterialListAreaAnalyzer list = new MaterialListAreaAnalyzer(this.parent.selection);
+                    DataManager.setMaterialList(list);
+                    GuiMaterialList gui = new GuiMaterialList(list);
+                    Minecraft.getInstance().displayGuiScreen(gui);
+                    list.reCreateMaterialList(); // This is after changing the GUI, so that the task message goes to the new GUI
+                    return;
+                }
+
                 case CREATE_SUB_REGION:
+                {
                     GuiTextInput gui = new GuiTextInput(512, "litematica.gui.title.area_editor.sub_region_name", "", null, new SubRegionCreator(this.parent));
                     gui.setParent(this.parent);
                     Minecraft.getInstance().displayGuiScreen(gui);
                     break;
+                }
 
                 case SET_SELECTION_NAME:
                 {
@@ -512,6 +532,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
             TOGGLE_ORIGIN_ENABLED   ("litematica.gui.button.area_editor.origin_enabled"),
             CREATE_SUB_REGION       ("litematica.gui.button.area_editor.create_sub_region"),
             CREATE_SCHEMATIC        ("litematica.gui.button.area_editor.create_schematic"),
+            ANALYZE_AREA            ("litematica.gui.button.area_editor.analyze_area"),
             CHANGE_SELECTION_MODE   ("litematica.gui.button.area_editor.change_selection_mode"),
             CHANGE_CORNER_MODE      ("litematica.gui.button.area_editor.change_corner_mode"),
             MOVE_TO_PLAYER          ("litematica.gui.button.move_to_player"),

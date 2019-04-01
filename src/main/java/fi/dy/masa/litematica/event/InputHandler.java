@@ -180,7 +180,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
 
     private boolean handleAttackKey(Minecraft mc)
     {
-        if (mc.player != null && KeybindMulti.getTriggeredCount() == 0)
+        if (mc.player != null && DataManager.getToolMode() == ToolMode.REBUILD && KeybindMulti.getTriggeredCount() == 0)
         {
             if (Hotkeys.SCHEMATIC_REBUILD_REPLACE_DIRECTION.getKeybind().isKeybindHeld())
             {
@@ -190,7 +190,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
             {
                 return SchematicUtils.breakAllIdenticalSchematicBlocks(mc);
             }
-            else if (DataManager.getToolMode() == ToolMode.REBUILD)
+            else
             {
                 return SchematicUtils.breakSchematicBlock(mc);
             }
@@ -207,7 +207,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
             {
                 if (Hotkeys.SCHEMATIC_REBUILD_REPLACE_DIRECTION.getKeybind().isKeybindHeld())
                 {
-                    return SchematicUtils.replaceSchematicBlocks(mc);
+                    return SchematicUtils.replaceSchematicBlocksInDirection(mc);
                 }
                 else if (Hotkeys.SCHEMATIC_REBUILD_REPLACE_ALL.getKeybind().isKeybindHeld())
                 {
@@ -242,18 +242,17 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
         return false;
     }
 
-    public static void onTick()
+    public static void onTick(Minecraft mc)
     {
-        Minecraft mc = Minecraft.getInstance();
+        SelectionManager sm = DataManager.getSelectionManager();
 
-        if (mc.world != null && mc.player != null)
+        if (sm.hasGrabbedElement())
         {
-            SelectionManager sm = DataManager.getSelectionManager();
-
-            if (sm.hasGrabbedElement())
-            {
-                sm.moveGrabbedElement(mc.player);
-            }
+            sm.moveGrabbedElement(mc.player);
+        }
+        else
+        {
+            WorldUtils.easyPlaceOnUseTick(mc);
         }
     }
 }

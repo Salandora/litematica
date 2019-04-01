@@ -55,7 +55,7 @@ public class MaterialCache
         this.tempWorld = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.PEACEFUL, Minecraft.getInstance().profiler);
         this.checkPos = new BlockPos(8, 0, 8);
 
-        WorldUtils.loadChunksSchematicWorld(this.tempWorld, this.checkPos, new Vec3i(1, 1, 1));
+        WorldUtils.loadChunksClientWorld(this.tempWorld, this.checkPos, new Vec3i(1, 1, 1));
     }
 
     public static MaterialCache getInstance()

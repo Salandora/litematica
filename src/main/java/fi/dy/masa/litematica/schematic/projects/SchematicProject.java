@@ -114,8 +114,8 @@ public class SchematicProject
         offset = this.selectionSimple.getEffectiveOrigin().subtract(this.origin);
         this.selectionSimple.moveEntireSelectionTo(origin.add(offset), false);
 
-        offset = this.lastSeenArea.getEffectiveOrigin().subtract(this.origin);
-        this.lastSeenArea.moveEntireSelectionTo(origin.add(offset), false);
+        // Forget the old last seen area, it will be invalid after moving the entire project
+        this.lastSeenArea = new AreaSelection();
 
         this.origin = origin;
 
@@ -320,7 +320,7 @@ public class SchematicProject
 
             TaskSaveSchematic task = new TaskSaveSchematic(this.directory, fileName, schematic, selection.copy(), true, false);
             task.setCompletionListener(listener);
-            TaskScheduler.getInstance().scheduleTask(task, 2);
+            TaskScheduler.getServerInstanceIfExistsOrClient().scheduleTask(task, 2);
             this.saveInProgress = true;
             this.dirty = true;
             this.saveToFile();
@@ -358,6 +358,7 @@ public class SchematicProject
         this.origin = BlockPos.ORIGIN;
         this.versions.clear();
         this.selection = new AreaSelection();
+        this.selectionSimple = new AreaSelectionSimple(true);
         this.lastSeenArea = new AreaSelection();
         this.lastCheckedOutVersion = -1;
         this.currentVersionId = -1;
@@ -525,6 +526,27 @@ public class SchematicProject
 
         @Override
         public void onTaskCompleted()
+        {
+            Minecraft mc = Minecraft.getInstance();
+
+            if (mc.isCallingFromMinecraftThread())
+            {
+                this.saveVersion();
+            }
+            else
+            {
+                mc.addScheduledTask(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        SaveCompletionListener.this.saveVersion();
+                    }
+                });
+            }
+        }
+
+        private void saveVersion()
         {
             SchematicVersion version = new SchematicVersion(this.name, this.fileName, this.areaOffset, this.version, System.currentTimeMillis());
             SchematicProject.this.versions.add(version);

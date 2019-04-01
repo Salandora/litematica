@@ -20,7 +20,7 @@ public abstract class MixinGameRenderer
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/WorldRenderer;renderBlockLayer(" +
-                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I",ordinal = 0, remap = false, shift = Shift.AFTER))
+                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I",ordinal = 0, shift = Shift.AFTER))
     private void renderSolid(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
         LitematicaRenderer.getInstance().piecewiseRenderSolid(partialTicks);
@@ -28,7 +28,7 @@ public abstract class MixinGameRenderer
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/WorldRenderer;renderBlockLayer(" +
-                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 1, remap = false, shift = Shift.AFTER))
+                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 1, shift = Shift.AFTER))
     private void renderCutoutMipped(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
         LitematicaRenderer.getInstance().piecewiseRenderCutoutMipped(partialTicks);
@@ -36,7 +36,7 @@ public abstract class MixinGameRenderer
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/WorldRenderer;renderBlockLayer(" +
-                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 2, remap = false, shift = Shift.AFTER))
+                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 2, shift = Shift.AFTER))
     private void renderCutout(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
         LitematicaRenderer.getInstance().piecewiseRenderCutout(partialTicks);
@@ -44,7 +44,7 @@ public abstract class MixinGameRenderer
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/WorldRenderer;renderBlockLayer(" +
-                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 3, remap = false, shift = Shift.AFTER))
+                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 3, shift = Shift.AFTER))
     private void renderTranslucent(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
         LitematicaRenderer.getInstance().piecewiseRenderTranslucent(partialTicks);

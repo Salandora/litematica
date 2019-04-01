@@ -98,8 +98,7 @@ public class ToolHud extends InfoHud
 
             if (version != null)
             {
-                lines.add(I18n.format("litematica.hud.schematic_projects.current_version_name", green + version.getName() + rst));
-                lines.add(I18n.format("litematica.hud.schematic_projects.current_version_number", green + version.getVersion() + rst, green + project.getVersionCount() + rst));
+                lines.add(I18n.format("litematica.hud.schematic_projects.current_version", green + version.getVersion() + rst, green + project.getVersionCount() + rst, green + version.getName() + rst));
                 DATE.setTime(version.getTimeStamp());
                 lines.add(I18n.format("litematica.hud.schematic_projects.current_version_date", green + SIMPLE_DATE_FORMAT.format(DATE) + rst));
                 BlockPos o = project.getOrigin();
@@ -109,6 +108,19 @@ public class ToolHud extends InfoHud
             else
             {
                 lines.add(I18n.format("litematica.hud.schematic_projects.no_versions"));
+            }
+
+            SelectionManager sm = DataManager.getSelectionManager();
+            AreaSelection selection = sm.getCurrentSelection();
+
+            if (selection != null && sm.getSelectionMode() == SelectionMode.NORMAL)
+            {
+                String subRegionName = selection.getCurrentSubRegionBoxName();
+
+                if (subRegionName != null)
+                {
+                    lines.add(I18n.format("litematica.hud.area_selection.selected_sub_region", green + subRegionName + rst));
+                }
             }
 
             str = green + Configs.Generic.SELECTION_CORNERS_MODE.getOptionListValue().getDisplayName() + rst;
@@ -199,30 +211,30 @@ public class ToolHud extends InfoHud
                         lines.add(I18n.format("litematica.hud.area_selection.dimensions_position", strDim, strp1, strp2));
                     }
                 }
-
-                if (mode.getUsesBlockPrimary())
-                {
-                    IBlockState state = mode.getPrimaryBlock();
-
-                    if (state != null)
-                    {
-                        lines.add(I18n.format("litematica.tool_hud.block_1", this.getBlockString(state)));
-                    }
-                }
-
-                if (mode.getUsesBlockSecondary())
-                {
-                    IBlockState state = mode.getSecondaryBlock();
-
-                    if (state != null)
-                    {
-                        lines.add(I18n.format("litematica.tool_hud.block_2", this.getBlockString(state)));
-                    }
-                }
-
-                str = green + Configs.Generic.SELECTION_CORNERS_MODE.getOptionListValue().getDisplayName() + rst;
-                lines.add(I18n.format("litematica.hud.area_selection.selection_corners_mode", str));
             }
+
+            if (mode.getUsesBlockPrimary())
+            {
+                IBlockState state = mode.getPrimaryBlock();
+
+                if (state != null)
+                {
+                    lines.add(I18n.format("litematica.tool_hud.block_1", this.getBlockString(state)));
+                }
+            }
+
+            if (mode.getUsesBlockSecondary())
+            {
+                IBlockState state = mode.getSecondaryBlock();
+
+                if (state != null)
+                {
+                    lines.add(I18n.format("litematica.tool_hud.block_2", this.getBlockString(state)));
+                }
+            }
+
+            str = green + Configs.Generic.SELECTION_CORNERS_MODE.getOptionListValue().getDisplayName() + rst;
+            lines.add(I18n.format("litematica.hud.area_selection.selection_corners_mode", str));
         }
         else if (mode.getUsesSchematic())
         {

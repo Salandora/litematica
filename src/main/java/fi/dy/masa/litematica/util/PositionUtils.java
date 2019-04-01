@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.tuple.Pair;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
@@ -294,11 +295,28 @@ public class PositionUtils
         for (Map.Entry<String, Box> entry : subRegions.entrySet())
         {
             Box box = entry.getValue();
-            MutableBoundingBox  bb = box != null ? PositionUtils.getBoundsWithinChunkForBox(box, chunkX, chunkZ) : null;
+            MutableBoundingBox  bb = box != null ? getBoundsWithinChunkForBox(box, chunkX, chunkZ) : null;
 
             if (bb != null)
             {
                 builder.put(entry.getKey(), bb);
+            }
+        }
+
+        return builder.build();
+    }
+
+    public static ImmutableList<MutableBoundingBox> getBoxesWithinChunk(int chunkX, int chunkZ, Collection<Box> boxes)
+    {
+        ImmutableList.Builder<MutableBoundingBox> builder = new ImmutableList.Builder<>();
+
+        for (Box box : boxes)
+        {
+            MutableBoundingBox bb = getBoundsWithinChunkForBox(box, chunkX, chunkZ);
+
+            if (bb != null)
+            {
+                builder.add(bb);
             }
         }
 
@@ -608,6 +626,21 @@ public class PositionUtils
         }
     }
 
+    public static Rotation getReverseRotation(Rotation rotationIn)
+    {
+        switch (rotationIn)
+        {
+            case COUNTERCLOCKWISE_90:
+                return Rotation.CLOCKWISE_90;
+            case CLOCKWISE_90:
+                return Rotation.COUNTERCLOCKWISE_90;
+            case CLOCKWISE_180:
+                return Rotation.CLOCKWISE_180;
+            default:
+                return rotationIn;
+        }
+    }
+
     public static BlockPos getModifiedPartiallyLockedPosition(BlockPos posOriginal, BlockPos posNew, int lockMask)
     {
         if (lockMask != 0)
@@ -797,14 +830,16 @@ public class PositionUtils
         private BlockPos posReference = BlockPos.ORIGIN;
         private boolean closestFirst;
 
-        public void setClosestFirst(boolean closestFirst)
+        public ChunkPosComparator setClosestFirst(boolean closestFirst)
         {
             this.closestFirst = closestFirst;
+            return this;
         }
 
-        public void setReferencePosition(BlockPos pos)
+        public ChunkPosComparator setReferencePosition(BlockPos pos)
         {
             this.posReference = pos;
+            return this;
         }
 
         @Override

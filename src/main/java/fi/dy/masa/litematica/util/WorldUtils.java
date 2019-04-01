@@ -8,7 +8,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
-import com.google.common.collect.ImmutableList;
+
 import com.mojang.datafixers.DataFixer;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
@@ -24,11 +24,10 @@ import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.tool.ToolMode;
 import fi.dy.masa.litematica.util.PositionUtils.Corner;
 import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
-import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper.HitType;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.litematica.world.WorldSchematic;
 import fi.dy.masa.malilib.gui.Message;
-import fi.dy.masa.malilib.hotkeys.IKeybind;
+import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.hotkeys.KeybindMulti;
 import fi.dy.masa.malilib.interfaces.IStringConsumer;
 import fi.dy.masa.malilib.util.FileUtils;
@@ -46,17 +45,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.resources.I18n;
-import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Blocks;
-import net.minecraft.inventory.IInventory;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemUseContext;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.state.properties.ComparatorMode;
 import net.minecraft.state.properties.Half;
 import net.minecraft.state.properties.SlabType;
@@ -112,7 +108,7 @@ public class WorldUtils
         WorldSettings settings = new WorldSettings(0L, GameType.CREATIVE, false, false, WorldType.FLAT);
         WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
-        WorldUtils.loadChunksSchematicWorld(world, BlockPos.ORIGIN, schematic.getSize());
+        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, schematic.getSize());
         PlacementSettings placementSettings = new PlacementSettings();
         placementSettings.setIgnoreEntities(ignoreEntities);
         schematic.placeSchematicDirectlyToChunks(world, BlockPos.ORIGIN, placementSettings);
@@ -163,7 +159,7 @@ public class WorldUtils
             WorldSettings settings = new WorldSettings(0L, GameType.CREATIVE, false, false, WorldType.FLAT);
             WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
-            loadChunksSchematicWorld(world, BlockPos.ORIGIN, template.getSize());
+            loadChunksClientWorld(world, BlockPos.ORIGIN, template.getSize());
 
             PlacementSettings placementSettings = new PlacementSettings();
             placementSettings.setIgnoreEntities(ignoreEntities);
@@ -221,7 +217,7 @@ public class WorldUtils
         WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
         BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
-        WorldUtils.loadChunksSchematicWorld(world, BlockPos.ORIGIN, size);
+        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, size);
         SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
         litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
 
@@ -257,7 +253,7 @@ public class WorldUtils
         WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
         BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
-        WorldUtils.loadChunksSchematicWorld(world, BlockPos.ORIGIN, size);
+        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, size);
         SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
         litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
 
@@ -320,7 +316,7 @@ public class WorldUtils
         return template;
     }
 
-    public static void loadChunksSchematicWorld(WorldSchematic world, BlockPos origin, Vec3i areaSize)
+    public static void loadChunksClientWorld(WorldSchematic world, BlockPos origin, Vec3i areaSize)
     {
         BlockPos posEnd = origin.add(PositionUtils.getRelativeEndPositionFromAreaSize(areaSize));
         BlockPos posMin = PositionUtils.getMinCorner(origin, posEnd);
@@ -345,7 +341,6 @@ public class WorldUtils
         IBlockState state = Blocks.AIR.getDefaultState();
 
         if (traceWrapper != null &&
-            traceWrapper.getHitType() == HitType.VANILLA &&
             traceWrapper.getRayTraceResult().type == RayTraceResult.Type.BLOCK)
         {
             state = mc.world.getBlockState(traceWrapper.getRayTraceResult().getBlockPos());
@@ -571,7 +566,7 @@ public class WorldUtils
     }
 
     private static boolean easyPlaceBlockChecksCancel(IBlockState stateSchematic, IBlockState stateClient,
-            EntityPlayer player, RayTraceResult trace, ItemStack stack)
+                                                      EntityPlayer player, RayTraceResult trace, ItemStack stack)
     {
         Block blockSchematic = stateSchematic.getBlock();
 
