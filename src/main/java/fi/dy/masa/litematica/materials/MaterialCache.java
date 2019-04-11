@@ -214,6 +214,10 @@ public class MaterialCache
         {
             stack.setCount(2);
         }
+        else if (state.getBlock() == Blocks.SNOW)
+        {
+            stack.setCount(state.get(BlockSnowLayer.LAYERS));
+        }
     }
 
     protected NBTTagCompound writeToNBT()

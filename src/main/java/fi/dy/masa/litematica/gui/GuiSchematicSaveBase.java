@@ -1,7 +1,7 @@
 package fi.dy.masa.litematica.gui;
 
 import javax.annotation.Nullable;
-import fi.dy.masa.litematica.gui.base.GuiSchematicBrowserBase;
+
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.malilib.gui.GuiTextFieldGeneric;
 import fi.dy.masa.malilib.gui.Message.MessageType;
@@ -19,10 +19,11 @@ import net.minecraft.client.resources.I18n;
 
 public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase implements ISelectionListener<DirectoryEntry>
 {
+    protected GuiTextField textField;
     @Nullable
     protected final LitematicaSchematic schematic;
-    protected GuiTextField textField;
     protected WidgetCheckBox checkboxIgnoreEntities;
+    protected String lastText = "";
     protected String defaultText = "";
 
     public GuiSchematicSaveBase(@Nullable LitematicaSchematic schematic)
@@ -60,20 +61,23 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
 
         DirectoryEntry entry = this.getListWidget().getLastSelectedEntry();
 
-        if (entry != null && entry.getType() != DirectoryEntryType.DIRECTORY)
+        // Only set the text field contents if it hasn't been set already.
+        // This prevents overwriting any user input text when switching to a newly created directory.
+        if (this.lastText.isEmpty())
         {
-            this.textField.setText(FileUtils.getNameWithoutExtension(entry.getName()));
+            if (entry != null && entry.getType() != DirectoryEntryType.DIRECTORY && entry.getType() != DirectoryEntryType.INVALID)
+            {
+                this.setTextFieldText(FileUtils.getNameWithoutExtension(entry.getName()));
+            }
+            else if (this.schematic != null)
+            {
+                this.setTextFieldText(this.schematic.getMetadata().getName());
+            }
+            else
+            {
+                this.setTextFieldText(this.defaultText);
+            }
         }
-        else if (this.schematic != null)
-        {
-            this.textField.setText(this.schematic.getMetadata().getName());
-        }
-        else
-        {
-            this.textField.setText(this.defaultText);
-        }
-
-        this.textField.setCursorPositionEnd();
 
         int x = this.textField.x + this.textField.getWidth() + 12;
         int y = 32;
@@ -83,6 +87,18 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
         this.addWidget(this.checkboxIgnoreEntities);
 
         x = this.createButton(x, y, ButtonType.SAVE);
+    }
+
+    protected void setTextFieldText(String text)
+    {
+        this.lastText = text;
+        this.textField.setText(text);
+        this.textField.setCursorPositionEnd();
+    }
+
+    protected String getTextFieldText()
+    {
+        return this.textField.getText();
     }
 
     protected abstract IButtonActionListener<ButtonGeneric> createButtonListener(ButtonType type);
@@ -128,8 +144,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
     {
         if (entry != null && entry.getType() != DirectoryEntryType.DIRECTORY && entry.getType() != DirectoryEntryType.INVALID)
         {
-            this.textField.setText(FileUtils.getNameWithoutExtension(entry.getName()));
-            this.textField.setCursorPositionEnd();
+            this.setTextFieldText(FileUtils.getNameWithoutExtension(entry.getName()));
         }
     }
 

@@ -30,6 +30,8 @@ litematica.error.schematic.create.no_selections=No valid selection regions!
 
 litematica.error.schematic_load.cant_read_file=Can't read the schematic file '%s' (doesn't exist or permission issue)
 litematica.error.schematic_load.no_schematic_selected=No Schematic file selected!
+litematica.error.schematic_load.no_schematic_version_information=The schematic doesn't have version information, and can't be safely loaded!
+litematica.error.schematic_load.unsupported_schematic_version=Unsupported or future schematic version '%d'
 litematica.error.schematic_load.unsupported_type=Unknown or unsupported file type for '%s'
 
 litematica.error.schematic_manager.schematic_export.unsupported_type=Only Litematica schematics can be exported in other formats!
@@ -244,6 +246,10 @@ litematica.gui.label.placement_settings.placement_origin=Placement origin
 litematica.gui.label.render_layers.hotkey=Hotkey
 litematica.gui.label.render_layers.hover.hotkey=The next/previous layer hotkeys will affect this boundary.\nIf both are unselected, then the hotkeys will affect\nthe boundary that is closest to the player.
 
+litematica.gui.label.replace_behavior.all=All
+litematica.gui.label.replace_behavior.none=None
+litematica.gui.label.replace_behavior.with_non_air=With non-air
+
 litematica.gui.label.schematic_info.schematic_author=Schematic by: §f%s§r
 litematica.gui.label.schematic_info.description=Description:
 litematica.gui.label.schematic_info.enclosing_size=Enclosing size:
@@ -360,6 +366,7 @@ litematica.hud.misc.placement_restriction_mode_enabled=Placement Restriction mod
 litematica.hud.misc.render_layer_mode=Layer Mode: %s - %s
 litematica.hud.misc.render_layer_mode_all=Layer Mode: %s
 litematica.hud.misc.renderer_status=Renderers: A: %s S: %s B: %s O: %s SEL: %s
+litematica.hud.misc.schematic_paste.replace_mode=Replace blocks: %s
 
 litematica.hud.schematic_placement.hover_info.lock_coordinate=Lock this coordinate\nThis allows changing the other coordinates\nwithout affecting the locked ones
 litematica.hud.schematic_placement.hover_info.placement_locked=This placement has been locked and can't\nbe modified without unlocking it first

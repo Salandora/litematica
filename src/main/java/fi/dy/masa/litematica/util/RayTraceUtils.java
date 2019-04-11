@@ -407,22 +407,22 @@ public class RayTraceUtils
     }
 
     @Nullable
-    public static BlockPos getFurthestSchematicWorldTrace(World worldClient, Entity entity, double range)
+    public static BlockPos getFurthestSchematicWorldTrace(World worldClient, Entity entity, double maxRange)
     {
         Vec3d eyesPos = entity.getEyePosition(1f);
-        Vec3d rangedLookRot = entity.getLook(1f).scale(range);
+        Vec3d rangedLookRot = entity.getLook(1f).scale(maxRange);
         Vec3d lookEndPos = eyesPos.add(rangedLookRot);
 
-        RayTraceResult result = getRayTraceFromEntity(worldClient, entity, false, range);
+        RayTraceResult traceVanilla = getRayTraceFromEntity(worldClient, entity, false, maxRange);
 
-        if (result.type != RayTraceResult.Type.BLOCK)
+        if (traceVanilla.type != RayTraceResult.Type.BLOCK)
         {
             return null;
         }
 
-        final double closestVanilla = result.hitVec.squareDistanceTo(eyesPos);
+        final double closestVanilla = traceVanilla.hitVec.squareDistanceTo(eyesPos);
 
-        BlockPos closestVanillaPos = result.getBlockPos();
+        BlockPos closestVanillaPos = traceVanilla.getBlockPos();
         RayTraceFluidMode fluidMode = RayTraceFluidMode.NEVER;
         World worldSchematic = SchematicWorldHandler.getSchematicWorld();
         List<RayTraceResult> list = rayTraceSchematicWorldBlocksToList(worldSchematic, eyesPos, lookEndPos, fluidMode, false, false, true, 200);
@@ -446,6 +446,26 @@ public class RayTraceUtils
                 {
                     break;
                 }
+            }
+        }
+
+        // Didn't trace to any schematic blocks, but hit a vanilla block.
+        // Check if there is a schematic block adjacent to the vanilla block
+        // (which means that it has a non-full-cube collision box, since
+        // it wasn't hit by the trace), and no block in the client world.
+        // Note that this method is only used for the "pickBlockLast" type
+        // of pick blocking, not for the "first" variant, where this would
+        // probably be annoying if you want to pick block the client world block.
+        if (furthestTrace == null)
+        {
+            BlockPos pos = closestVanillaPos.offset(traceVanilla.sideHit);
+            LayerRange layerRange = DataManager.getRenderLayerRange();
+
+            if (layerRange.isPositionWithinRange(pos) &&
+                worldSchematic.getBlockState(pos).getMaterial() != Material.AIR &&
+                worldClient.getBlockState(pos).getMaterial() == Material.AIR)
+            {
+                return pos;
             }
         }
 
