@@ -275,7 +275,9 @@ public class LitematicaRenderer
 
     public void piecewisePrepareAndUpdate(float partialTicks)
     {
-        this.renderPiecewise = Configs.Generic.BETTER_RENDER_ORDER.getBooleanValue() && Configs.Visuals.ENABLE_RENDERING.getBooleanValue();
+        this.renderPiecewise = Configs.Generic.BETTER_RENDER_ORDER.getBooleanValue() &&
+                               Configs.Visuals.ENABLE_RENDERING.getBooleanValue() &&
+                               this.mc.getRenderViewEntity() != null;
         this.renderPiecewisePrepared = false;
         this.renderPiecewiseBlocks = false;
 
@@ -286,11 +288,6 @@ public class LitematicaRenderer
             this.renderPiecewiseBlocks = this.renderPiecewiseSchematic && Configs.Visuals.ENABLE_SCHEMATIC_BLOCKS.getBooleanValue();
 
             this.mc.profiler.startSection("litematica_culling");
-
-            if (this.mc.getRenderViewEntity() == null)
-            {
-                this.mc.setRenderViewEntity(this.mc.player);
-            }
 
             Entity entity = this.mc.getRenderViewEntity();
             ICamera icamera = this.createCamera(entity, partialTicks);
@@ -461,6 +458,8 @@ public class LitematicaRenderer
     {
         this.entity = null;
         this.camera = null;
+        this.renderPiecewise = false;
         this.renderPiecewisePrepared = false;
+        this.renderPiecewiseBlocks = false;
     }
 }

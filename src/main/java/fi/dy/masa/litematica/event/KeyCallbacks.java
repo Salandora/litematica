@@ -25,6 +25,7 @@ import fi.dy.masa.litematica.tool.ToolMode;
 import fi.dy.masa.litematica.tool.ToolModeData;
 import fi.dy.masa.litematica.util.EntityUtils;
 import fi.dy.masa.litematica.util.InventoryUtils;
+import fi.dy.masa.litematica.util.PositionUtils;
 import fi.dy.masa.litematica.util.PositionUtils.Corner;
 import fi.dy.masa.litematica.util.SchematicUtils;
 import fi.dy.masa.litematica.util.SchematicWorldRefresher;
@@ -79,6 +80,8 @@ public class KeyCallbacks
         Hotkeys.SAVE_AREA_AS_SCHEMATIC_TO_FILE.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.SCHEMATIC_VERSION_CYCLE_NEXT.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.SCHEMATIC_VERSION_CYCLE_PREVIOUS.getKeybind().setCallback(callbackHotkeys);
+        Hotkeys.SELECTION_GROW_HOTKEY.getKeybind().setCallback(callbackHotkeys);
+        Hotkeys.SELECTION_SHRINK_HOTKEY.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.TOOL_PLACE_CORNER_1.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.TOOL_PLACE_CORNER_2.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.TOOL_SELECT_ELEMENTS.getKeybind().setCallback(callbackHotkeys);
@@ -467,6 +470,22 @@ public class KeyCallbacks
                 int amount = key == Hotkeys.NUDGE_SELECTION_POSITIVE.getKeybind() ? 1 : -1;
                 InputHandler.nudgeSelection(amount, mode, this.mc.player);
                 return true;
+            }
+            else if (key == Hotkeys.SELECTION_GROW_HOTKEY.getKeybind())
+            {
+                if (mode.getUsesAreaSelection())
+                {
+                    PositionUtils.growOrShrinkCurrentSelection(true);
+                    return true;
+                }
+            }
+            else if (key == Hotkeys.SELECTION_SHRINK_HOTKEY.getKeybind())
+            {
+                if (mode.getUsesAreaSelection())
+                {
+                    PositionUtils.growOrShrinkCurrentSelection(false);
+                    return true;
+                }
             }
 
             return false;

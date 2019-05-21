@@ -126,6 +126,11 @@ public class WorldRendererSchematic extends WorldRenderer
         this.fluidRenderer = ((IMixinBlockRendererDispatcher) dispatcher).getFluidRenderer();
     }
 
+    public void markNeedsUpdate()
+    {
+        this.displayListEntitiesDirty = true;
+    }
+
     @Override
     public String getDebugInfoRenders()
     {

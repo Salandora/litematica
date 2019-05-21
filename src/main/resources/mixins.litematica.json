@@ -9,7 +9,6 @@
         "IMixinCompiledChunk",
         "IMixinKeyBinding",
         "IMixinNBTTagLongArray",
-        "IMixinRenderChunk",
         "IMixinViewFrustum",
         "IMixinWorldClient",
         "MixinBlockRail",
