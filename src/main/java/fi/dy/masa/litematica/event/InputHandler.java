@@ -62,6 +62,10 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
             {
                 return this.handleUseKey(mc);
             }
+            else if (mc.gameSettings.keyBindAttack.func_197984_a(eventKey))
+            {
+                return this.handleAttackKey(mc);
+            }
             else if (mc.gameSettings.keyBindScreenshot.func_197984_a(eventKey) && GuiSchematicManager.hasPendingPreviewTask())
             {
                 return GuiSchematicManager.setPreviewImage();
@@ -98,8 +102,8 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
         // Not in a GUI
         if (mc.currentScreen == null && mc.world != null && mc.player != null)
         {
-            boolean toolEnabled = Configs.Visuals.ENABLE_RENDERING.getBooleanValue() && Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue();
             EntityPlayer player = mc.player;
+            boolean toolEnabled = Configs.Visuals.ENABLE_RENDERING.getBooleanValue() && Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue();
 
             if (toolEnabled == false || EntityUtils.hasToolItem(player) == false)
             {

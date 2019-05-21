@@ -1,5 +1,6 @@
 package fi.dy.masa.litematica.mixin;
 
+import fi.dy.masa.litematica.config.Configs;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.At.Shift;
@@ -11,10 +12,13 @@ import net.minecraft.client.renderer.GameRenderer;
 @Mixin(GameRenderer.class)
 public abstract class MixinGameRenderer
 {
+    private boolean renderCollidingSchematicBlocks;
+
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/WorldRenderer;updateChunks(J)V", shift = Shift.AFTER))
     private void setupAndUpdate(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
+        this.renderCollidingSchematicBlocks = Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue();
         LitematicaRenderer.getInstance().piecewisePrepareAndUpdate(partialTicks);
     }
 
@@ -23,7 +27,7 @@ public abstract class MixinGameRenderer
                      "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I",ordinal = 0, shift = Shift.AFTER))
     private void renderSolid(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
-        LitematicaRenderer.getInstance().piecewiseRenderSolid(partialTicks);
+        LitematicaRenderer.getInstance().piecewiseRenderSolid(this.renderCollidingSchematicBlocks, partialTicks);
     }
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
@@ -31,7 +35,7 @@ public abstract class MixinGameRenderer
                      "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 1, shift = Shift.AFTER))
     private void renderCutoutMipped(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
-        LitematicaRenderer.getInstance().piecewiseRenderCutoutMipped(partialTicks);
+        LitematicaRenderer.getInstance().piecewiseRenderCutoutMipped(this.renderCollidingSchematicBlocks, partialTicks);
     }
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
@@ -39,7 +43,7 @@ public abstract class MixinGameRenderer
                      "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 2, shift = Shift.AFTER))
     private void renderCutout(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
-        LitematicaRenderer.getInstance().piecewiseRenderCutout(partialTicks);
+        LitematicaRenderer.getInstance().piecewiseRenderCutout(this.renderCollidingSchematicBlocks, partialTicks);
     }
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
@@ -47,7 +51,7 @@ public abstract class MixinGameRenderer
                      "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 3, shift = Shift.AFTER))
     private void renderTranslucent(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
-        LitematicaRenderer.getInstance().piecewiseRenderTranslucent(partialTicks);
+        LitematicaRenderer.getInstance().piecewiseRenderTranslucent(this.renderCollidingSchematicBlocks, partialTicks);
     }
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",

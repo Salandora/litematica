@@ -276,6 +276,8 @@ public class LitematicaRenderer
     public void piecewisePrepareAndUpdate(float partialTicks)
     {
         this.renderPiecewise = Configs.Generic.BETTER_RENDER_ORDER.getBooleanValue() && Configs.Visuals.ENABLE_RENDERING.getBooleanValue();
+        this.renderPiecewisePrepared = false;
+        this.renderPiecewiseBlocks = false;
 
         if (this.renderPiecewise)
         {
@@ -308,13 +310,13 @@ public class LitematicaRenderer
         }
     }
 
-    public void piecewiseRenderSolid(float partialTicks)
+    public void piecewiseRenderSolid(boolean renderColliding, float partialTicks)
     {
-        if (this.renderPiecewise && this.renderPiecewisePrepared && this.renderPiecewiseBlocks)
+        if (this.renderPiecewiseBlocks)
         {
             this.mc.profiler.endStartSection("litematica_blocks_solid");
 
-            if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
+            if (renderColliding)
             {
                 GlStateManager.enablePolygonOffset();
                 GlStateManager.polygonOffset(-0.3f, -0.6f);
@@ -326,7 +328,7 @@ public class LitematicaRenderer
 
             this.disableShader();
 
-            if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
+            if (renderColliding)
             {
                 GlStateManager.polygonOffset(0f, 0f);
                 GlStateManager.disablePolygonOffset();
@@ -334,13 +336,13 @@ public class LitematicaRenderer
         }
     }
 
-    public void piecewiseRenderCutoutMipped(float partialTicks)
+    public void piecewiseRenderCutoutMipped(boolean renderColliding, float partialTicks)
     {
-        if (this.renderPiecewise && this.renderPiecewisePrepared && this.renderPiecewiseBlocks)
+        if (this.renderPiecewiseBlocks)
         {
             this.mc.profiler.endStartSection("litematica_blocks_cutout_mipped");
 
-            if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
+            if (renderColliding)
             {
                 GlStateManager.enablePolygonOffset();
                 GlStateManager.polygonOffset(-0.3f, -0.6f);
@@ -352,7 +354,7 @@ public class LitematicaRenderer
 
             this.disableShader();
 
-            if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
+            if (renderColliding)
             {
                 GlStateManager.polygonOffset(0f, 0f);
                 GlStateManager.disablePolygonOffset();
@@ -360,13 +362,13 @@ public class LitematicaRenderer
         }
     }
 
-    public void piecewiseRenderCutout(float partialTicks)
+    public void piecewiseRenderCutout(boolean renderColliding, float partialTicks)
     {
-        if (this.renderPiecewise && this.renderPiecewisePrepared && this.renderPiecewiseBlocks)
+        if (this.renderPiecewiseBlocks)
         {
             this.mc.profiler.endStartSection("litematica_blocks_cutout");
 
-            if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
+            if (renderColliding)
             {
                 GlStateManager.enablePolygonOffset();
                 GlStateManager.polygonOffset(-0.3f, -0.6f);
@@ -378,25 +380,23 @@ public class LitematicaRenderer
 
             this.disableShader();
 
-            if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
+            if (renderColliding)
             {
                 GlStateManager.polygonOffset(0f, 0f);
                 GlStateManager.disablePolygonOffset();
             }
-
-            //GlStateManager.disableBlend();
         }
     }
 
-    public void piecewiseRenderTranslucent(float partialTicks)
+    public void piecewiseRenderTranslucent(boolean renderColliding, float partialTicks)
     {
-        if (this.renderPiecewise && this.renderPiecewisePrepared)
+        if (this.renderPiecewisePrepared)
         {
             if (this.renderPiecewiseBlocks)
             {
                 this.mc.profiler.endStartSection("litematica_translucent");
 
-                if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
+                if (renderColliding)
                 {
                     GlStateManager.enablePolygonOffset();
                     GlStateManager.polygonOffset(-0.3f, -0.6f);
@@ -408,7 +408,7 @@ public class LitematicaRenderer
 
                 this.disableShader();
 
-                if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
+                if (renderColliding)
                 {
                     GlStateManager.polygonOffset(0f, 0f);
                     GlStateManager.disablePolygonOffset();
@@ -427,7 +427,7 @@ public class LitematicaRenderer
 
     public void piecewiseRenderEntities(float partialTicks)
     {
-        if (this.renderPiecewise && this.renderPiecewisePrepared && this.renderPiecewiseBlocks)
+        if (this.renderPiecewiseBlocks)
         {
             this.mc.profiler.endStartSection("litematica_entities");
 

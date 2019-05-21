@@ -295,7 +295,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         }
 
         String cmdName = Configs.Generic.PASTE_COMMAND_SETBLOCK.getStringValue();
-        String strCommand = String.format("/%s %d %d %d %s %d", cmdName, x, y, z, BlockStateParser.toString(state, null));
+        String strCommand = String.format("/%s %d %d %d %s", cmdName, x, y, z, BlockStateParser.toString(state, null));
 
         player.sendChatMessage(strCommand);
         ++this.sentCommandsTotal;

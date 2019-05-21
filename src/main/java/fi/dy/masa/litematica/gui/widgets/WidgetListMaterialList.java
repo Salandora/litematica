@@ -2,7 +2,9 @@ package fi.dy.masa.litematica.gui.widgets;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import javax.annotation.Nullable;
+import com.google.common.collect.ImmutableList;
 import fi.dy.masa.litematica.gui.GuiMaterialList;
 import fi.dy.masa.litematica.gui.Icons;
 import fi.dy.masa.litematica.materials.MaterialListEntry;
@@ -77,14 +79,19 @@ public class WidgetListMaterialList extends WidgetListBase<MaterialListEntry, Wi
     }
 
     @Override
-    protected boolean entryMatchesFilter(MaterialListEntry entry, String filterText)
+    protected List<String> getEntryStringsForFilter(MaterialListEntry entry)
     {
         ItemStack stack = entry.getStack();
         ResourceLocation rl = IRegistry.ITEM.getKey(stack.getItem());
-        String regName = rl != null ? rl.toString() : "";
 
-        return stack.getDisplayName().getString().toLowerCase().indexOf(filterText) != -1 ||
-               regName.indexOf(filterText) != -1;
+        if (rl != null)
+        {
+            return ImmutableList.of(stack.getDisplayName().getString().toLowerCase(), rl.toString().toLowerCase());
+        }
+        else
+        {
+            return ImmutableList.of(stack.getDisplayName().getString().toLowerCase());
+        }
     }
 
     @Override

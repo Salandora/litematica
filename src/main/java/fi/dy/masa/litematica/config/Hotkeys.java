@@ -23,9 +23,10 @@ public class Hotkeys
     public static final ConfigHotkey NUDGE_SELECTION_POSITIVE           = new ConfigHotkey("nudgeSelectionPositive",            "",    "Nudge the current selection in the \"positive\" direction\nThis is basically the same as mouse wheel up\nwith the Nudge modifier pressed");
     public static final ConfigHotkey MOVE_ENTIRE_SELECTION              = new ConfigHotkey("moveEntireSelection",               "",    "Move the entire current selection here");
     public static final ConfigHotkey OPEN_GUI_AREA_SETTINGS             = new ConfigHotkey("openGuiAreaSettings",               "MULTIPLY",  KeybindSettings.EXCLUSIVE, "Open the Area Settings GUI for the currently selected area");
-    public static final ConfigHotkey OPEN_GUI_PLACEMENT_SETTINGS        = new ConfigHotkey("openGuiPlacementSettings",          "SUBTRACT",  KeybindSettings.EXCLUSIVE, "Open the Placement Settings GUI for the currently\nselected placement or sub-region");
+    public static final ConfigHotkey OPEN_GUI_LOADED_SCHEMATICS         = new ConfigHotkey("openGuiLoadedSchematics",           "",     "Open the Loaded Schematic GUI");
     public static final ConfigHotkey OPEN_GUI_MAIN_MENU                 = new ConfigHotkey("openGuiMainMenu",                   "M",    KeybindSettings.RELEASE_EXCLUSIVE, "Open the Litematica main menu");
     public static final ConfigHotkey OPEN_GUI_MATERIAL_LIST             = new ConfigHotkey("openGuiMaterialList",               "M,L",  "Open the Material List GUI for the currently\nselected schematic placement");
+    public static final ConfigHotkey OPEN_GUI_PLACEMENT_SETTINGS        = new ConfigHotkey("openGuiPlacementSettings",          "SUBTRACT",  KeybindSettings.EXCLUSIVE, "Open the Placement Settings GUI for the currently\nselected placement or sub-region");
     public static final ConfigHotkey OPEN_GUI_SCHEMATIC_PLACEMENTS      = new ConfigHotkey("openGuiSchematicPlacements",        "M,P",  KeybindSettings.EXCLUSIVE, "Open the Schematic Placements GUI");
     public static final ConfigHotkey OPEN_GUI_SCHEMATIC_PROJECTS        = new ConfigHotkey("openGuiSchematicProjects",          "",     "Open the Schematic Projects GUI");
     public static final ConfigHotkey OPEN_GUI_SCHEMATIC_VERIFIER        = new ConfigHotkey("openGuiSchematicVerifier",          "M,V",  "Open the Schematic Verifier GUI for the currently\nselected schematic placement");
@@ -35,7 +36,7 @@ public class Hotkeys
     public static final ConfigHotkey PICK_BLOCK_FIRST                   = new ConfigHotkey("pickBlockFirst",                    "BUTTON2", KeybindSettings.PRESS_ALLOWEXTRA, "A key to pick block the first\nschematic block ray traced to");
     public static final ConfigHotkey PICK_BLOCK_LAST                    = new ConfigHotkey("pickBlockLast",                     "",      KeybindSettings.PRESS_ALLOWEXTRA, "A key to pick block the last schematic block\nray traced to, before the first (possible) client world\nblock ray traced to. Basically this would get\nyou the block you could place against an existing block.");
     public static final ConfigHotkey PICK_BLOCK_TOGGLE                  = new ConfigHotkey("pickBlockToggle",                   "M,BUTTON2", "A hotkey to toggle the pick block toggle option in the\nGeneric configs. This is provided as a quick way to enable\nor disable the pick block keys, if they interfere with something.");
-    public static final ConfigHotkey RENDER_INFO_OVERLAY                = new ConfigHotkey("renderInfoOverlay",                 "LMENU", KeybindSettings.PRESS_ALLOWEXTRA, "The key that enables rendering the block info overlay.\nUse NONE for not requiring a key to be pressed.\nDisable the similarly named option in the Visuals\nconfigs to disable the overlay completely.");
+    public static final ConfigHotkey RENDER_INFO_OVERLAY                = new ConfigHotkey("renderInfoOverlay",                 "I", KeybindSettings.PRESS_ALLOWEXTRA, "The key that enables rendering the block info overlay.\nUse NONE for not requiring a key to be pressed.\nDisable the similarly named option in the Visuals\nconfigs to disable the overlay completely.");
     public static final ConfigHotkey RENDER_OVERLAY_THROUGH_BLOCKS      = new ConfigHotkey("renderOverlayThroughBlocks",        "RCONTROL", KeybindSettings.PRESS_ALLOWEXTRA, "A hotkey to allow the overlays to render through blocks.\nThis is just a quicker way to temporarily enable\nthe same thing that the 'schematicOverlayRenderThroughBlocks' option in Visuals does.");
     public static final ConfigHotkey RERENDER_SCHEMATIC                 = new ConfigHotkey("rerenderSchematic",                 "F3,M", "Hotkey to refresh/redraw only the schematic, instead of\nhaving to refresh the vanilla terrain too with F3 + A");
     public static final ConfigHotkey SAVE_AREA_AS_IN_MEMORY_SCHEMATIC   = new ConfigHotkey("saveAreaAsInMemorySchematic",       "",     "Save the current Area Selection as an in-memory Schematic");
@@ -57,7 +58,6 @@ public class Hotkeys
     public static final ConfigHotkey TOGGLE_AREA_SELECTION_RENDERING    = new ConfigHotkey("toggleAreaSelectionBoxesRendering", "",     "Toggle Area Selection boxes rendering on/off");
     public static final ConfigHotkey TOGGLE_SCHEMATIC_RENDERING         = new ConfigHotkey("toggleSchematicRendering",          "M,G",  "Toggle schematic rendering (blocks & overlay) on/off");
     public static final ConfigHotkey TOGGLE_INFO_OVERLAY_RENDERING      = new ConfigHotkey("toggleInfoOverlayRendering",        "",     "Toggle the info overlay rendering (for hovered block info)");
-    public static final ConfigHotkey TOGGLE_MISMATCH_OVERLAY_RENDERING  = new ConfigHotkey("toggleMismatchOverlayRendering",    "",     "Toggle the mismatch overlay rendering (for Schematic Verifier)");
     public static final ConfigHotkey TOGGLE_OVERLAY_RENDERING           = new ConfigHotkey("toggleOverlayRendering",            "",     "Toggle the block overlay rendering on/off");
     public static final ConfigHotkey TOGGLE_OVERLAY_OUTLINE_RENDERING   = new ConfigHotkey("toggleOverlayOutlineRendering",     "",     "Toggle the block overlay outline rendering on/off");
     public static final ConfigHotkey TOGGLE_OVERLAY_SIDE_RENDERING      = new ConfigHotkey("toggleOverlaySideRendering",        "",     "Toggle the block overlay side rendering on/off");
@@ -65,6 +65,7 @@ public class Hotkeys
     public static final ConfigHotkey TOGGLE_PLACEMENT_RESTRICTION       = new ConfigHotkey("togglePlacementRestriction",        "",     "A hotkey to toggle the placement restriction mode");
     public static final ConfigHotkey TOGGLE_SCHEMATIC_BLOCK_RENDERING   = new ConfigHotkey("toggleSchematicBlockRendering",     "",     "Toggle schematic block rendering on/off");
     public static final ConfigHotkey TOGGLE_TRANSLUCENT_RENDERING       = new ConfigHotkey("toggleTranslucentRendering",        "",     "Toggle translucent vs. opaque ghost block rendering");
+    public static final ConfigHotkey TOGGLE_VERIFIER_OVERLAY_RENDERING  = new ConfigHotkey("toggleVerifierOverlayRendering",    "",     "Toggle the Schematic Verifier overlay rendering");
     public static final ConfigHotkey TOOL_ENABLED_TOGGLE                = new ConfigHotkey("toolEnabledToggle",                 "M,T",  "The keybind to toggle the \"tool\" item functionality on/off");
     public static final ConfigHotkey TOOL_PLACE_CORNER_1                = new ConfigHotkey("toolPlaceCorner1",                  "BUTTON0", KeybindSettings.PRESS_ALLOWEXTRA, "The button to use while holding the \"tool\" item\nto place the primary/first corner");
     public static final ConfigHotkey TOOL_PLACE_CORNER_2                = new ConfigHotkey("toolPlaceCorner2",                  "BUTTON1", KeybindSettings.PRESS_ALLOWEXTRA, "The button to use while holding the \"tool\" item\nto place the second corner");
@@ -89,9 +90,10 @@ public class Hotkeys
             NUDGE_SELECTION_POSITIVE,
             MOVE_ENTIRE_SELECTION,
             OPEN_GUI_AREA_SETTINGS,
-            OPEN_GUI_PLACEMENT_SETTINGS,
+            OPEN_GUI_LOADED_SCHEMATICS,
             OPEN_GUI_MAIN_MENU,
             OPEN_GUI_MATERIAL_LIST,
+            OPEN_GUI_PLACEMENT_SETTINGS,
             OPEN_GUI_SCHEMATIC_PLACEMENTS,
             OPEN_GUI_SCHEMATIC_PROJECTS,
             OPEN_GUI_SCHEMATIC_VERIFIER,
@@ -122,7 +124,6 @@ public class Hotkeys
             TOGGLE_ALL_RENDERING,
             TOGGLE_AREA_SELECTION_RENDERING,
             TOGGLE_INFO_OVERLAY_RENDERING,
-            TOGGLE_MISMATCH_OVERLAY_RENDERING,
             TOGGLE_OVERLAY_RENDERING,
             TOGGLE_OVERLAY_OUTLINE_RENDERING,
             TOGGLE_OVERLAY_SIDE_RENDERING,
@@ -131,6 +132,7 @@ public class Hotkeys
             TOGGLE_SCHEMATIC_BLOCK_RENDERING,
             TOGGLE_SCHEMATIC_RENDERING,
             TOGGLE_TRANSLUCENT_RENDERING,
+            TOGGLE_VERIFIER_OVERLAY_RENDERING,
             TOOL_ENABLED_TOGGLE,
             TOOL_PLACE_CORNER_1,
             TOOL_PLACE_CORNER_2,
