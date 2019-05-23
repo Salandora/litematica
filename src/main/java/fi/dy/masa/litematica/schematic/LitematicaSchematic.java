@@ -237,6 +237,7 @@ public class LitematicaSchematic
             schematic.tileEntities.put(regionName, new HashMap<>());
             schematic.entities.put(regionName, new ArrayList<>());
             schematic.pendingBlockTicks.put(regionName, new HashMap<>());
+            schematic.pendingFluidTicks.put(regionName, new HashMap<>());
         }
 
         return schematic;
