@@ -1,5 +1,7 @@
 package fi.dy.masa.litematica.gui;
 
+import java.util.ArrayList;
+import java.util.List;
 import javax.annotation.Nullable;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.data.DataManager;
@@ -19,6 +21,7 @@ import fi.dy.masa.malilib.gui.GuiTextFieldGeneric;
 import fi.dy.masa.malilib.gui.GuiTextFieldInteger;
 import fi.dy.masa.malilib.gui.GuiTextInput;
 import fi.dy.masa.malilib.gui.Message.MessageType;
+import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.ButtonOnOff;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
@@ -27,6 +30,7 @@ import fi.dy.masa.malilib.gui.interfaces.ITextFieldListener;
 import fi.dy.masa.malilib.gui.widgets.WidgetCheckBox;
 import fi.dy.masa.malilib.interfaces.IStringConsumerFeedback;
 import fi.dy.masa.malilib.util.PositionUtils.CoordinateType;
+import fi.dy.masa.malilib.util.StringUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
@@ -134,23 +138,36 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         }
 
         x = 12;
-        y += 16;
+        y = this.getListY() - 12;
         String str = String.valueOf(this.selection.getAllSubRegionNames().size());
-        this.addLabel(x, this.getListY() - 12, -1, 16, 0xFFFFFFFF, TextFormatting.BOLD + I18n.format("litematica.gui.label.area_editor.sub_regions", str));
+        this.addLabel(x, y, -1, 16, 0xFFFFFFFF, TextFormatting.BOLD + I18n.format("litematica.gui.label.area_editor.sub_regions", str));
 
         ButtonGeneric button;
 
-        y = this.height - 26;
-
         if (Configs.Visuals.ENABLE_AREA_SELECTION_RENDERING.getBooleanValue() == false)
         {
-            this.addLabel(16, y - 22, 120, 12, 0xFFFFAA00, I18n.format("litematica.warning.area_editor.area_rendering_disabled"));
+            str = I18n.format("litematica.warning.area_editor.area_rendering_disabled");
+            List<String> lines = new ArrayList<>();
+            int xTmp = 120;
+            int maxLineLength = this.width - xTmp - 20;
+            StringUtils.splitTextToLines(lines, str, maxLineLength, this.fontRenderer);
+            this.addLabel(xTmp, y + 2, maxLineLength, lines.size() * (this.fontRenderer.FONT_HEIGHT + 1), 0xFFFFAA00, lines.toArray(new String[0]));
         }
+
+        y = this.height - 26;
 
         ButtonListenerChangeMenu.ButtonType type = ButtonListenerChangeMenu.ButtonType.AREA_SELECTION_BROWSER;
         String label = I18n.format(type.getLabelKey());
         button = new ButtonGeneric(x, y, -1, 20, label, type.getIcon());
-        x += this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent())).getButton().getWidth() + 4;
+
+        if (DataManager.getSchematicProjectsManager().hasProjectOpen())
+        {
+            button.setEnabled(false);
+            button.setHoverStrings("litematica.gui.button.hover.schematic_projects.area_browser_disabled_currently_in_projects_mode");
+        }
+
+        x += this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent())).getWidth() + 4;
+
         this.createButton(x, y, -1, ButtonListener.Type.ANALYZE_AREA);
 
         type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
@@ -182,17 +199,17 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         {
             case CORNER_1:
                 label = I18n.format("litematica.gui.label.area_editor.corner_1");
-                widget = new WidgetCheckBox(x, y + 3, this.zLevel, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, label, this.mc);
+                widget = new WidgetCheckBox(x, y + 3, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, label);
                 this.checkBoxCorner1 = widget;
                 break;
             case CORNER_2:
                 label = I18n.format("litematica.gui.label.area_editor.corner_2");
-                widget = new WidgetCheckBox(x, y + 3, this.zLevel, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, label, this.mc);
+                widget = new WidgetCheckBox(x, y + 3, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, label);
                 this.checkBoxCorner2 = widget;
                 break;
             case NONE:
                 label = I18n.format("litematica.gui.label.area_editor.origin");
-                widget = new WidgetCheckBox(x, y + 3, this.zLevel, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, label, this.mc);
+                widget = new WidgetCheckBox(x, y + 3, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, label);
                 this.checkBoxOrigin = widget;
                 break;
         }
@@ -256,7 +273,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
     protected int createButtonOnOff(int x, int y, int width, boolean isCurrentlyOn, ButtonListener.Type type)
     {
-        ButtonOnOff button = ButtonOnOff.createOnOff(x, y, width, false, type.getTranslationKey(), isCurrentlyOn);
+        ButtonOnOff button = new ButtonOnOff(x, y, width, false, type.getTranslationKey(), isCurrentlyOn);
         this.addButton(button, new ButtonListener(type, null, null, this));
         return button.getWidth();
     }
@@ -393,7 +410,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         }
     }
 
-    protected static class ButtonListener implements IButtonActionListener<ButtonGeneric>
+    protected static class ButtonListener implements IButtonActionListener
     {
         private final GuiAreaSelectionEditorNormal parent;
         private final Type type;
@@ -409,12 +426,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         }
 
         @Override
-        public void actionPerformed(ButtonGeneric control)
-        {
-        }
-
-        @Override
-        public void actionPerformedWithButton(ButtonGeneric control, int mouseButton)
+        public void actionPerformedWithButton(ButtonBase button, int mouseButton)
         {
             int amount = mouseButton == 1 ? -1 : 1;
             if (GuiScreen.isCtrlKeyDown()) { amount *= 100; }

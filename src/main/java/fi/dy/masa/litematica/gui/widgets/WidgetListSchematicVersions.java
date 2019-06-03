@@ -22,14 +22,14 @@ public class WidgetListSchematicVersions extends WidgetListBase<SchematicVersion
     private final SchematicProject project;
     protected final int infoWidth;
 
-    public WidgetListSchematicVersions(int x, int y, int width, int height, float zLevel, SchematicProject project, GuiSchematicProjectManager parent)
+    public WidgetListSchematicVersions(int x, int y, int width, int height, SchematicProject project, GuiSchematicProjectManager parent)
     {
         super(x, y, width, height, parent);
 
         this.project = project;
         this.browserEntryHeight = 16;
         this.infoWidth = 180;
-        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 4, width - 14, 14, zLevel, 0, Icons.FILE_ICON_SEARCH, LeftRight.LEFT, Minecraft.getInstance());
+        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 4, width - 14, 14, 0, Icons.FILE_ICON_SEARCH, LeftRight.LEFT);
         this.browserEntriesOffsetY = this.widgetSearchBar.getHeight() + 3;
     }
 
@@ -116,6 +116,6 @@ public class WidgetListSchematicVersions extends WidgetListBase<SchematicVersion
     protected WidgetSchematicVersion createListEntryWidget(int x, int y, int listIndex, boolean isOdd, SchematicVersion entry)
     {
         return new WidgetSchematicVersion(x, y, this.browserEntryWidth, this.getBrowserEntryHeightFor(entry),
-                this.zLevel, isOdd, entry, listIndex, this.project);
+                isOdd, entry, listIndex, this.project);
     }
 }

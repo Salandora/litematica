@@ -13,6 +13,7 @@ import fi.dy.masa.litematica.util.FileType;
 import fi.dy.masa.litematica.util.WorldUtils;
 import fi.dy.masa.malilib.gui.GuiStringListSelection;
 import fi.dy.masa.malilib.gui.Message.MessageType;
+import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.interfaces.ISelectionListener;
@@ -68,7 +69,7 @@ public class GuiSchematicLoad extends GuiSchematicBrowserBase
 
         label = I18n.format("litematica.gui.label.schematic_load.checkbox.create_placement");
         str = I18n.format("litematica.gui.label.schematic_load.hoverinfo.create_placement");
-        this.checkboxCreatePlacementOnLoad = new WidgetCheckBox(x, y, this.zLevel, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, label, this.mc, str);
+        this.checkboxCreatePlacementOnLoad = new WidgetCheckBox(x, y, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, label, str);
         this.checkboxCreatePlacementOnLoad.setListener(new CheckboxListener());
         this.checkboxCreatePlacementOnLoad.setChecked(DataManager.getCreatePlacementOnLoad());
         this.addWidget(this.checkboxCreatePlacementOnLoad);
@@ -113,7 +114,7 @@ public class GuiSchematicLoad extends GuiSchematicBrowserBase
         return width;
     }
 
-    private static class ButtonListener implements IButtonActionListener<ButtonGeneric>
+    private static class ButtonListener implements IButtonActionListener
     {
         private final Type type;
         private final GuiSchematicLoad gui;
@@ -125,7 +126,7 @@ public class GuiSchematicLoad extends GuiSchematicBrowserBase
         }
 
         @Override
-        public void actionPerformed(ButtonGeneric control)
+        public void actionPerformedWithButton(ButtonBase button, int mouseButton)
         {
             DirectoryEntry entry = this.gui.getListWidget().getLastSelectedEntry();
 
@@ -209,12 +210,6 @@ public class GuiSchematicLoad extends GuiSchematicBrowserBase
                     InfoUtils.showGuiOrInGameMessage(MessageType.WARNING, 15000, "litematica.message.warn.schematic_load_non_litematica");
                 }
             }
-        }
-
-        @Override
-        public void actionPerformedWithButton(ButtonGeneric control, int mouseButton)
-        {
-            this.actionPerformed(control);
         }
 
         public enum Type

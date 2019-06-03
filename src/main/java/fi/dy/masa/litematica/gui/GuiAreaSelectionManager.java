@@ -6,10 +6,12 @@ import fi.dy.masa.litematica.gui.GuiMainMenu.ButtonListenerChangeMenu;
 import fi.dy.masa.litematica.gui.widgets.WidgetAreaSelectionBrowser;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.selection.SelectionManager;
+import fi.dy.masa.litematica.selection.SelectionMode;
 import fi.dy.masa.litematica.util.FileType;
 import fi.dy.masa.malilib.gui.GuiListBase;
 import fi.dy.masa.malilib.gui.GuiTextInput;
 import fi.dy.masa.malilib.gui.Message.MessageType;
+import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.interfaces.ISelectionListener;
@@ -19,6 +21,7 @@ import fi.dy.masa.malilib.gui.widgets.WidgetFileBrowserBase.DirectoryEntryType;
 import fi.dy.masa.malilib.interfaces.IStringConsumer;
 import fi.dy.masa.malilib.interfaces.IStringConsumerFeedback;
 import fi.dy.masa.malilib.util.FileUtils;
+import fi.dy.masa.malilib.util.InfoUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 
@@ -31,7 +34,6 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
         super(10, 50);
 
         this.title = I18n.format("litematica.gui.title.area_selection_manager");
-        this.mc = Minecraft.getInstance();
         this.selectionManager = DataManager.getSelectionManager();
     }
 
@@ -53,6 +55,11 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
         super.initGui();
 
         this.reCreateGuiElements();
+
+        if (this.selectionManager.getSelectionMode() == SelectionMode.SIMPLE)
+        {
+            InfoUtils.showGuiMessage(MessageType.WARNING, "litematica.message.warn.area_selection.browser_open_in_simple_mode");
+        }
     }
 
     protected void reCreateGuiElements()
@@ -161,7 +168,7 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
         return widget;
     }
 
-    private static class ButtonListener implements IButtonActionListener<ButtonGeneric>
+    private static class ButtonListener implements IButtonActionListener
     {
         private final GuiAreaSelectionManager gui;
         private final ButtonType type;
@@ -173,7 +180,7 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
         }
 
         @Override
-        public void actionPerformed(ButtonGeneric control)
+        public void actionPerformedWithButton(ButtonBase button, int mouseButton)
         {
             if (this.type == ButtonType.NEW_SELECTION)
             {
@@ -201,12 +208,6 @@ public class GuiAreaSelectionManager extends GuiListBase<DirectoryEntry, WidgetD
                 DataManager.getSelectionManager().setCurrentSelection(null);
                 this.gui.reCreateGuiElements();
             }
-        }
-
-        @Override
-        public void actionPerformedWithButton(ButtonGeneric control, int mouseButton)
-        {
-            this.actionPerformed(control);
         }
 
         public enum ButtonType

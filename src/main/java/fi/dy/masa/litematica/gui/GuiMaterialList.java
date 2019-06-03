@@ -21,6 +21,7 @@ import fi.dy.masa.malilib.data.DataDump;
 import fi.dy.masa.malilib.gui.GuiListBase;
 import fi.dy.masa.malilib.gui.GuiTextFieldInteger;
 import fi.dy.masa.malilib.gui.Message.MessageType;
+import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.ButtonOnOff;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
@@ -92,7 +93,7 @@ public class GuiMaterialList extends GuiListBase<MaterialListEntry, WidgetMateri
         MultiplierListener listener = new MultiplierListener(this.materialList, this);
         this.addTextField(tf, listener);
 
-        this.addWidget(new WidgetInfoIcon(this.width - 23, 10, this.zLevel, Icons.INFO_11, "litematica.info.material_list"));
+        this.addWidget(new WidgetInfoIcon(this.width - 23, 10, Icons.INFO_11, "litematica.info.material_list"));
 
         int gap = 1;
         x += this.createButton(x, y, -1, ButtonListener.Type.REFRESH_LIST) + gap;
@@ -194,8 +195,8 @@ public class GuiMaterialList extends GuiListBase<MaterialListEntry, WidgetMateri
         width += this.mc.fontRenderer.getStringWidth(ButtonListener.Type.CLEAR_IGNORED.getDisplayName());
         width += this.mc.fontRenderer.getStringWidth(ButtonListener.Type.CLEAR_CACHE.getDisplayName());
         width += this.mc.fontRenderer.getStringWidth(ButtonListener.Type.WRITE_TO_FILE.getDisplayName());
-        width += ButtonOnOff.createOnOff(0, 0, -1, false, ButtonListener.Type.HIDE_AVAILABLE.getTranslationKey(), false).getWidth();
-        width += ButtonOnOff.createOnOff(0, 0, -1, false, ButtonListener.Type.TOGGLE_INFO_HUD.getTranslationKey(), false).getWidth();
+        width += new ButtonOnOff(0, 0, -1, false, ButtonListener.Type.HIDE_AVAILABLE.getTranslationKey(), false).getWidth();
+        width += new ButtonOnOff(0, 0, -1, false, ButtonListener.Type.TOGGLE_INFO_HUD.getTranslationKey(), false).getWidth();
         width += this.mc.fontRenderer.getStringWidth(I18n.format("litematica.gui.label.material_list.multiplier"));
         width += 130;
 
@@ -204,7 +205,7 @@ public class GuiMaterialList extends GuiListBase<MaterialListEntry, WidgetMateri
 
     private int createButtonOnOff(int x, int y, int width, boolean isCurrentlyOn, ButtonListener.Type type)
     {
-        ButtonOnOff button = ButtonOnOff.createOnOff(x, y, width, false, type.getTranslationKey(), isCurrentlyOn);
+        ButtonOnOff button = new ButtonOnOff(x, y, width, false, type.getTranslationKey(), isCurrentlyOn);
         this.addButton(button, new ButtonListener(type, this));
         return button.getWidth();
     }
@@ -231,7 +232,7 @@ public class GuiMaterialList extends GuiListBase<MaterialListEntry, WidgetMateri
         return new WidgetListMaterialList(listX, listY, this.getBrowserWidth(), this.getBrowserHeight(), this);
     }
 
-    private static class ButtonListener implements IButtonActionListener<ButtonGeneric>
+    private static class ButtonListener implements IButtonActionListener
     {
         private final GuiMaterialList parent;
         private final Type type;
@@ -243,12 +244,7 @@ public class GuiMaterialList extends GuiListBase<MaterialListEntry, WidgetMateri
         }
 
         @Override
-        public void actionPerformed(ButtonGeneric control)
-        {
-        }
-
-        @Override
-        public void actionPerformedWithButton(ButtonGeneric control, int mouseButton)
+        public void actionPerformedWithButton(ButtonBase button, int mouseButton)
         {
             MaterialListBase materialList = this.parent.materialList;
 

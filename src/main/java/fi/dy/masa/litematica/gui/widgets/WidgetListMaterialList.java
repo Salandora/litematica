@@ -32,7 +32,7 @@ public class WidgetListMaterialList extends WidgetListBase<MaterialListEntry, Wi
 
         this.browserEntryHeight = 22;
         this.gui = parent;
-        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 8, width - 16, 14, 1, 0, Icons.FILE_ICON_SEARCH, LeftRight.RIGHT, Minecraft.getInstance());
+        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 8, width - 16, 14, 0, Icons.FILE_ICON_SEARCH, LeftRight.RIGHT);
         this.sorter = new MaterialListSorter(parent.getMaterialList());
         this.shouldSortList = true;
 
@@ -112,6 +112,6 @@ public class WidgetListMaterialList extends WidgetListBase<MaterialListEntry, Wi
     protected WidgetMaterialListEntry createListEntryWidget(int x, int y, int listIndex, boolean isOdd, @Nullable MaterialListEntry entry)
     {
         return new WidgetMaterialListEntry(x, y, this.browserEntryWidth, this.getBrowserEntryHeightFor(entry),
-                this.zLevel, isOdd, this.gui.getMaterialList(), entry, listIndex, this);
+                isOdd, this.gui.getMaterialList(), entry, listIndex, this);
     }
 }

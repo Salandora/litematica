@@ -10,6 +10,7 @@ import fi.dy.masa.litematica.selection.SelectionManager;
 import fi.dy.masa.litematica.util.SchematicUtils;
 import fi.dy.masa.malilib.gui.GuiConfirmAction;
 import fi.dy.masa.malilib.gui.GuiListBase;
+import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.interfaces.ISelectionListener;
@@ -71,7 +72,7 @@ public class GuiSchematicProjectManager extends GuiListBase<SchematicVersion, Wi
 
     private int createButton(int x, int y, boolean rightAlign, ButtonListener.Type type)
     {
-        ButtonGeneric button = ButtonGeneric.createGeneric(x, y, -1, rightAlign, type.getTranslationKey());
+        ButtonGeneric button = new ButtonGeneric(x, y, -1, rightAlign, type.getTranslationKey());
         String hover = type.getHoverText();
 
         if (hover != null)
@@ -119,10 +120,10 @@ public class GuiSchematicProjectManager extends GuiListBase<SchematicVersion, Wi
     @Override
     protected WidgetListSchematicVersions createListWidget(int listX, int listY)
     {
-        return new WidgetListSchematicVersions(listX, listY, this.getBrowserWidth() - 186, this.getBrowserHeight(), this.zLevel, this.project, this);
+        return new WidgetListSchematicVersions(listX, listY, this.getBrowserWidth() - 186, this.getBrowserHeight(), this.project, this);
     }
 
-    private static class ButtonListener implements IButtonActionListener<ButtonGeneric>
+    private static class ButtonListener implements IButtonActionListener
     {
         private final Type type;
         private final GuiSchematicProjectManager gui;
@@ -134,12 +135,7 @@ public class GuiSchematicProjectManager extends GuiListBase<SchematicVersion, Wi
         }
 
         @Override
-        public void actionPerformed(ButtonGeneric control)
-        {
-        }
-
-        @Override
-        public void actionPerformedWithButton(ButtonGeneric control, int mouseButton)
+        public void actionPerformedWithButton(ButtonBase button, int mouseButton)
         {
             if (this.type == Type.OPEN_PROJECT_BROWSER)
             {

@@ -56,22 +56,23 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
         manager.addHotkeysForCategory(Reference.MOD_NAME, "litematica.hotkeys.category.generic_hotkeys", Hotkeys.HOTKEY_LIST);
     }
 
+
     @Override
-    public boolean onKeyInput(int eventKey, boolean eventKeyState)
+    public boolean onKeyInput(int keyCode, int scanCode, int modifiers, boolean eventKeyState)
     {
         if (eventKeyState)
         {
             Minecraft mc = Minecraft.getInstance();
 
-            if (mc.gameSettings.keyBindUseItem.func_197984_a(eventKey))
+            if (mc.gameSettings.keyBindUseItem.isKeyDown())
             {
                 return this.handleUseKey(mc);
             }
-            else if (mc.gameSettings.keyBindAttack.func_197984_a(eventKey))
+            else if (mc.gameSettings.keyBindAttack.isKeyDown())
             {
                 return this.handleAttackKey(mc);
             }
-            else if (mc.gameSettings.keyBindScreenshot.func_197984_a(eventKey) && GuiSchematicManager.hasPendingPreviewTask())
+            else if (mc.gameSettings.keyBindScreenshot.isKeyDown() && GuiSchematicManager.hasPendingPreviewTask())
             {
                 return GuiSchematicManager.setPreviewImage();
             }

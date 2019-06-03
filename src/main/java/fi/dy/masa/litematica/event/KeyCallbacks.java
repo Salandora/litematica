@@ -33,10 +33,12 @@ import fi.dy.masa.litematica.util.ToolUtils;
 import fi.dy.masa.litematica.util.WorldUtils;
 import fi.dy.masa.malilib.config.IConfigBoolean;
 import fi.dy.masa.malilib.config.options.ConfigString;
+import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.hotkeys.IHotkeyCallback;
 import fi.dy.masa.malilib.hotkeys.IKeybind;
 import fi.dy.masa.malilib.hotkeys.KeyAction;
 import fi.dy.masa.malilib.hotkeys.KeyCallbackToggleBooleanConfigWithMessage;
+import fi.dy.masa.malilib.hotkeys.KeybindMulti;
 import fi.dy.masa.malilib.interfaces.IValueChangeCallback;
 import fi.dy.masa.malilib.util.InfoUtils;
 import fi.dy.masa.malilib.util.LayerMode;
@@ -45,9 +47,8 @@ import net.minecraft.util.math.BlockPos;
 
 public class KeyCallbacks
 {
-    public static void init()
+    public static void init(Minecraft mc)
     {
-        Minecraft mc = Minecraft.getInstance();
         IHotkeyCallback callbackHotkeys = new KeyCallbackHotkeys(mc);
         IHotkeyCallback callbackMessage = new KeyCallbackToggleMessage(mc);
         ValueChangeCallback valueChangeCallback = new ValueChangeCallback();
@@ -249,7 +250,15 @@ public class KeyCallbacks
             }
             else if (key == Hotkeys.OPEN_GUI_SELECTION_MANAGER.getKeybind())
             {
-                this.mc.displayGuiScreen(new GuiAreaSelectionManager());
+                if (DataManager.getSchematicProjectsManager().hasProjectOpen() == false)
+                {
+                    this.mc.displayGuiScreen(new GuiAreaSelectionManager());
+                }
+                else
+                {
+                    InfoUtils.showGuiOrInGameMessage(MessageType.WARNING, "litematica.gui.button.hover.schematic_projects.area_browser_disabled_currently_in_projects_mode");
+                }
+
                 return true;
             }
             else if (key == Hotkeys.OPEN_GUI_SCHEMATIC_PLACEMENTS.getKeybind())

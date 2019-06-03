@@ -17,13 +17,13 @@ public class WidgetListSchematicPlacements extends WidgetListBase<SchematicPlace
 {
     private final GuiSchematicPlacementsList parent;
 
-    public WidgetListSchematicPlacements(int x, int y, int width, int height, float zLevel, GuiSchematicPlacementsList parent)
+    public WidgetListSchematicPlacements(int x, int y, int width, int height, GuiSchematicPlacementsList parent)
     {
         super(x, y, width, height, parent);
 
         this.parent = parent;
         this.browserEntryHeight = 22;
-        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 4, width - 14, 14, zLevel, 0, Icons.FILE_ICON_SEARCH, LeftRight.LEFT, Minecraft.getInstance());
+        this.widgetSearchBar = new WidgetSearchBar(x + 2, y + 4, width - 14, 14, 0, Icons.FILE_ICON_SEARCH, LeftRight.LEFT);
         this.browserEntriesOffsetY = this.widgetSearchBar.getHeight() + 3;
     }
 
@@ -56,6 +56,6 @@ public class WidgetListSchematicPlacements extends WidgetListBase<SchematicPlace
     protected WidgetSchematicPlacement createListEntryWidget(int x, int y, int listIndex, boolean isOdd, SchematicPlacement entry)
     {
         return new WidgetSchematicPlacement(x, y, this.browserEntryWidth, this.getBrowserEntryHeightFor(entry),
-                this.zLevel, isOdd, entry, listIndex, this, this.mc);
+                isOdd, entry, listIndex, this, this.mc);
     }
 }

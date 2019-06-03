@@ -9,6 +9,7 @@ import fi.dy.masa.litematica.util.FileType;
 import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.GuiTextInputFeedback;
 import fi.dy.masa.malilib.gui.Message.MessageType;
+import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.interfaces.IFileBrowserIconProvider;
@@ -28,11 +29,11 @@ public class WidgetAreaSelectionEntry extends WidgetDirectoryEntry
     private final WidgetAreaSelectionBrowser parent;
     private int buttonsStartX;
 
-    public WidgetAreaSelectionEntry(int x, int y, int width, int height, float zLevel, boolean isOdd,
-            DirectoryEntry entry, int listIndex, SelectionManager selectionManager, Minecraft mc,
+    public WidgetAreaSelectionEntry(int x, int y, int width, int height, boolean isOdd,
+            DirectoryEntry entry, int listIndex, SelectionManager selectionManager,
             WidgetAreaSelectionBrowser parent, IFileBrowserIconProvider iconProvider)
     {
-        super(x, y, width, height, zLevel, isOdd, entry, listIndex, mc, parent, iconProvider);
+        super(x, y, width, height, isOdd, entry, listIndex, parent, iconProvider);
 
         this.selectionManager = selectionManager;
         this.parent = parent;
@@ -132,7 +133,7 @@ public class WidgetAreaSelectionEntry extends WidgetDirectoryEntry
         }
     }
 
-    private static class ButtonListener implements IButtonActionListener<ButtonGeneric>
+    private static class ButtonListener implements IButtonActionListener
     {
         private final WidgetAreaSelectionEntry widget;
         private final SelectionManager selectionManager;
@@ -146,21 +147,21 @@ public class WidgetAreaSelectionEntry extends WidgetDirectoryEntry
         }
 
         @Override
-        public void actionPerformed(ButtonGeneric control)
+        public void actionPerformedWithButton(ButtonBase button, int mouseButton)
         {
             String selectionId = this.widget.getDirectoryEntry().getFullPath().getAbsolutePath();
 
             if (this.type == ButtonType.RENAME)
             {
                 String title = "litematica.gui.title.rename_area_selection";
-                AreaSelection selection = this.selectionManager.getSelection(selectionId);
+                AreaSelection selection = this.selectionManager.getOrLoadSelection(selectionId);
                 String name = selection != null ? selection.getName() : "<error>";
                 SelectionRenamer renamer = new SelectionRenamer(this.selectionManager, this.widget, false);
                 this.widget.mc.displayGuiScreen(new GuiTextInputFeedback(160, title, name, this.widget.parent.getSelectionManagerGui(), renamer));
             }
             else if (this.type == ButtonType.COPY)
             {
-                AreaSelection selection = this.selectionManager.getSelection(selectionId);
+                AreaSelection selection = this.selectionManager.getOrLoadSelection(selectionId);
 
                 if (selection != null)
                 {
@@ -191,12 +192,6 @@ public class WidgetAreaSelectionEntry extends WidgetDirectoryEntry
             }
 
             this.widget.parent.refreshEntries();
-        }
-
-        @Override
-        public void actionPerformedWithButton(ButtonGeneric control, int mouseButton)
-        {
-            this.actionPerformed(control);
         }
 
         public enum ButtonType

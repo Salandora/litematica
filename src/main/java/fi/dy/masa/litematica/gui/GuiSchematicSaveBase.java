@@ -83,7 +83,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
         int y = 32;
 
         String str = I18n.format("litematica.gui.label.schematic_save.checkbox.ignore_entities");
-        this.checkboxIgnoreEntities = new WidgetCheckBox(x, y + 24, this.zLevel, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, str, this.mc);
+        this.checkboxIgnoreEntities = new WidgetCheckBox(x, y + 24, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, str);
         this.addWidget(this.checkboxIgnoreEntities);
 
         x = this.createButton(x, y, ButtonType.SAVE);
@@ -101,7 +101,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
         return this.textField.getText();
     }
 
-    protected abstract IButtonActionListener<ButtonGeneric> createButtonListener(ButtonType type);
+    protected abstract IButtonActionListener createButtonListener(ButtonType type);
 
     private int createButton(int x, int y, ButtonType type)
     {

@@ -39,7 +39,7 @@ public class TaskSaveSchematic extends TaskProcessChunkBase
 
     public TaskSaveSchematic(@Nullable File dir, @Nullable String fileName, LitematicaSchematic schematic, AreaSelection area, boolean takeEntities, boolean overrideFile)
     {
-        super();
+        super("litematica.gui.label.task_name.save_schematic");
 
         this.dir = dir;
         this.fileName = fileName;
