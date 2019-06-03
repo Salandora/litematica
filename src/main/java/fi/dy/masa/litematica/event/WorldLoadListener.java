@@ -23,9 +23,9 @@ public class WorldLoadListener implements IWorldLoadListener
     @Override
     public void onWorldLoadPost(@Nullable WorldClient worldBefore, @Nullable WorldClient worldAfter, Minecraft mc)
     {
-        SchematicWorldHandler.recreateSchematicWorld(worldBefore == null);
+        SchematicWorldHandler.recreateSchematicWorld(worldAfter == null);
 
-        if (worldBefore != null)
+        if (worldAfter != null)
         {
             DataManager.load();
         }
