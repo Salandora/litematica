@@ -32,8 +32,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
 
         this.schematic = schematic;
 
-        Minecraft mc = Minecraft.getInstance();
-        this.textField = new GuiTextFieldGeneric(10, 32, 160, 20, mc.fontRenderer);
+        this.textField = new GuiTextFieldGeneric(10, 32, 160, 20, this.textRenderer);
         this.textField.setMaxStringLength(256);
         this.textField.setFocused(true);
     }
@@ -106,7 +105,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
     private int createButton(int x, int y, ButtonType type)
     {
         String label = I18n.format(type.getLabelKey());
-        int width = this.mc.fontRenderer.getStringWidth(label) + 10;
+        int width = this.getStringWidth(label) + 10;
 
         ButtonGeneric button;
 

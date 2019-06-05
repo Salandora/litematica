@@ -66,7 +66,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
         int x = 12;
         int y = 22;
 
-        this.textFieldRename = new GuiTextFieldGeneric(x, y + 2, width, 16, this.mc.fontRenderer);
+        this.textFieldRename = new GuiTextFieldGeneric(x, y + 2, width, 16, this.textRenderer);
         this.textFieldRename.setMaxStringLength(256);
         this.textFieldRename.setText(this.placement.getName());
         this.addTextField(this.textFieldRename, null);
@@ -136,7 +136,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
 
             type = ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PLACEMENTS;
             label = I18n.format(type.getLabelKey());
-            int buttonWidth = this.fontRenderer.getStringWidth(label) + 10;
+            int buttonWidth = this.getStringWidth(label) + 10;
             ButtonGeneric button = new ButtonGeneric(x, y, buttonWidth, 20, label);
             this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
         }
@@ -151,7 +151,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
 
             type = ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PLACEMENTS;
             label = I18n.format(type.getLabelKey());
-            int buttonWidth = this.fontRenderer.getStringWidth(label) + 10;
+            int buttonWidth = this.getStringWidth(label) + 10;
             x = this.width - buttonWidth - 9;
             ButtonGeneric button = new ButtonGeneric(x, y, buttonWidth, 20, label);
             this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
@@ -164,7 +164,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
     {
         String label = type.name() + ":";
         this.addLabel(x, y, width, 20, 0xFFFFFFFF, label);
-        int offset = this.mc.fontRenderer.getStringWidth(label) + 4;
+        int offset = this.getStringWidth(label) + 4;
 
         BlockPos pos = this.placement.getOrigin();
         String text = "";
@@ -176,7 +176,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
             case Z: text = String.valueOf(pos.getZ()); break;
         }
 
-        GuiTextFieldInteger textField = new GuiTextFieldInteger(x + offset, y + 2, width, 14, this.mc.fontRenderer);
+        GuiTextFieldInteger textField = new GuiTextFieldInteger(x + offset, y + 2, width, 14, this.textRenderer);
         textField.setText(text);
         TextFieldListener listener = new TextFieldListener(type, this.placement, this);
         this.addTextField(textField, listener);
@@ -265,7 +265,7 @@ public class GuiPlacementConfiguration  extends GuiListBase<SubRegionPlacement, 
 
         if (width == -1)
         {
-            width = this.fontRenderer.getStringWidth(label) + 10;
+            width = this.getStringWidth(label) + 10;
         }
 
         // These are right-aligned

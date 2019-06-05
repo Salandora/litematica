@@ -108,7 +108,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
         y += 13;
 
         int width = 202;
-        this.textFieldSelectionName = new GuiTextFieldGeneric(x, y + 2, width, 16, this.mc.fontRenderer);
+        this.textFieldSelectionName = new GuiTextFieldGeneric(x, y + 2, width, 16, this.textRenderer);
         this.textFieldSelectionName.setText(this.selection.getName());
         this.addTextField(this.textFieldSelectionName, new TextFieldListenerDummy());
         x += width + 4;
@@ -150,8 +150,8 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
             List<String> lines = new ArrayList<>();
             int xTmp = 120;
             int maxLineLength = this.width - xTmp - 20;
-            StringUtils.splitTextToLines(lines, str, maxLineLength, this.fontRenderer);
-            this.addLabel(xTmp, y + 2, maxLineLength, lines.size() * (this.fontRenderer.FONT_HEIGHT + 1), 0xFFFFAA00, lines.toArray(new String[0]));
+            StringUtils.splitTextToLines(lines, str, maxLineLength, this.textRenderer);
+            this.addLabel(xTmp, y + 2, maxLineLength, lines.size() * (this.textRenderer.FONT_HEIGHT + 1), 0xFFFFAA00, lines.toArray(new String[0]));
         }
 
         y = this.height - 26;
@@ -172,7 +172,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         type = ButtonListenerChangeMenu.ButtonType.MAIN_MENU;
         label = I18n.format(type.getLabelKey());
-        int buttonWidth = this.fontRenderer.getStringWidth(label) + 10;
+        int buttonWidth = this.getStringWidth(label) + 10;
         x = this.width - buttonWidth - 10;
         button = new ButtonGeneric(x, y, buttonWidth, 20, label);
         this.addButton(button, new ButtonListenerChangeMenu(type, this.getParent()));
@@ -263,7 +263,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
                 break;
         }
 
-        GuiTextFieldInteger textField = new GuiTextFieldInteger(x + offset, y, width, 16, this.mc.fontRenderer);
+        GuiTextFieldInteger textField = new GuiTextFieldInteger(x + offset, y, width, 16, this.textRenderer);
         TextFieldListener listener = new TextFieldListener(coordType, corner, this);
         textField.setText(text);
         this.addTextField(textField, listener);
@@ -309,7 +309,7 @@ public class GuiAreaSelectionEditorNormal extends GuiListBase<String, WidgetSele
 
         if (width == -1)
         {
-            width = this.mc.fontRenderer.getStringWidth(label) + 10;
+            width = this.getStringWidth(label) + 10;
         }
 
         ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);

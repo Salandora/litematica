@@ -11,7 +11,6 @@ import fi.dy.masa.malilib.gui.LeftRight;
 import fi.dy.masa.malilib.gui.widgets.WidgetListBase;
 import fi.dy.masa.malilib.gui.widgets.WidgetSearchBar;
 import fi.dy.masa.malilib.util.FileUtils;
-import net.minecraft.client.Minecraft;
 
 public class WidgetListSchematicPlacements extends WidgetListBase<SchematicPlacement, WidgetSchematicPlacement>
 {
@@ -56,6 +55,6 @@ public class WidgetListSchematicPlacements extends WidgetListBase<SchematicPlace
     protected WidgetSchematicPlacement createListEntryWidget(int x, int y, int listIndex, boolean isOdd, SchematicPlacement entry)
     {
         return new WidgetSchematicPlacement(x, y, this.browserEntryWidth, this.getBrowserEntryHeightFor(entry),
-                isOdd, entry, listIndex, this, this.mc);
+                isOdd, entry, listIndex, this);
     }
 }

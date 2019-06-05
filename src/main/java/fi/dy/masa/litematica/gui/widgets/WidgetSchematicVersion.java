@@ -52,7 +52,7 @@ public class WidgetSchematicVersion extends WidgetListEntryBase<SchematicVersion
         }
 
         String str = I18n.format("litematica.gui.label.schematic_projects.version_entry", this.entry.getVersion(), this.entry.getName());
-        this.mc.fontRenderer.drawString(str, this.x + 4, this.y + 4, 0xFFFFFFFF);
+        this.drawString(str, this.x + 4, this.y + 4, 0xFFFFFFFF);
     }
 
     @Override

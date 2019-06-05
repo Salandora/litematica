@@ -23,14 +23,13 @@ public abstract class TaskProcessChunkBase extends TaskBase
     protected final WorldClient worldClient;
     protected final World world;
     protected final boolean isClientWorld;
-    protected boolean finished;
 
     protected TaskProcessChunkBase(String nameOnHud)
     {
         this.worldClient = this.mc.world;
         this.world = WorldUtils.getBestWorld(this.mc);
         this.isClientWorld = (this.world == this.mc.world);
-        this.nameOnHud = I18n.format(nameOnHud);
+        this.name = I18n.format(nameOnHud);
 
         InfoHud.getInstance().addInfoHudRenderer(this, true);
     }
@@ -90,6 +89,7 @@ public abstract class TaskProcessChunkBase extends TaskBase
 
     protected void onStop()
     {
+        this.notifyListener();
     }
 
     protected abstract boolean canProcessChunk(ChunkPos pos);

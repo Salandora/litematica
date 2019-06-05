@@ -51,7 +51,6 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
     private int currentIndex;
     private int boxVolume;
     private boolean boxInProgress;
-    private boolean finished;
 
     public TaskPasteSchematicSetblock(SchematicPlacement placement, boolean changedBlocksOnly)
     {
@@ -60,6 +59,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         this.comparator = new ChunkPosComparator();
         this.comparator.setClosestFirst(true);
         this.replace = (ReplaceBehavior) Configs.Generic.PASTE_REPLACE_BEHAVIOR.getOptionListValue();
+        this.name = I18n.format("litematica.gui.label.task_name.paste");
 
         Set<ChunkPos> touchedChunks = placement.getTouchedChunks();
 
@@ -329,6 +329,8 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         }
 
         InfoHud.getInstance().removeInfoHudRenderer(this, false);
+
+        super.stop();
     }
 
     private void updateInfoHudLines()

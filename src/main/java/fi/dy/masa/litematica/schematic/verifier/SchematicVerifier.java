@@ -79,7 +79,6 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
     private boolean sortReverse;
     private boolean verificationStarted;
     private boolean verificationActive;
-    private boolean finished;
     private boolean shouldRenderInfoHud = true;
     private int totalRequiredChunks;
     private int schematicBlocks;
@@ -88,7 +87,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
 
     public SchematicVerifier()
     {
-        this.nameOnHud = I18n.format("litematica.gui.label.schematic_verifier.verifier");
+        this.name = I18n.format("litematica.gui.label.schematic_verifier.verifier");
     }
 
     public static void clearActiveVerifiers()
@@ -300,6 +299,12 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
         this.verifyChunks();
         this.checkChangedPositions();
         return false;
+    }
+
+    @Override
+    public void stop()
+    {
+        // Don't call notifyListeners
     }
 
     public void startVerification(WorldClient worldClient, WorldSchematic worldSchematic,
@@ -516,13 +521,9 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
             {
                 this.verificationActive = false;
                 this.verificationStarted = false;
-
                 this.finished = true;
 
-                if (this.completionListener != null)
-                {
-                    this.completionListener.onTaskCompleted();
-                }
+                this.notifyListener();
             }
         }
 

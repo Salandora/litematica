@@ -55,7 +55,7 @@ public class GuiRenderLayer extends GuiRenderLayerEditBase
 
         if (width < 0)
         {
-            width = this.mc.fontRenderer.getStringWidth(label) + 10;
+            width = this.getStringWidth(label) + 10;
         }
 
         ButtonGeneric button = new ButtonGeneric(x, y, width, 20, label);

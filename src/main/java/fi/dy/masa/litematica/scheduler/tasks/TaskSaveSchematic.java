@@ -101,11 +101,6 @@ public class TaskSaveSchematic extends TaskProcessChunkBase
                 SchematicHolder.getInstance().addSchematic(this.schematic, true);
                 InfoUtils.showGuiOrInGameMessage(MessageType.SUCCESS, "litematica.message.in_memory_schematic_created", name);
             }
-
-            if (this.completionListener != null)
-            {
-                this.completionListener.onTaskCompleted();
-            }
         }
         else
         {
@@ -113,5 +108,7 @@ public class TaskSaveSchematic extends TaskProcessChunkBase
         }
 
         InfoHud.getInstance().removeInfoHudRenderer(this, false);
+
+        this.notifyListener();
     }
 }

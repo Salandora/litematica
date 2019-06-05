@@ -13,12 +13,11 @@ public class WorldLoadListener implements IWorldLoadListener
     public void onWorldLoadPre(@Nullable WorldClient worldBefore, @Nullable WorldClient worldAfter, Minecraft mc)
     {
         // Save the settings before the integrated server gets shut down
-        if (Minecraft.getInstance().world != null)
+        if (worldBefore != null)
         {
             DataManager.save();
         }
     }
-
 
     @Override
     public void onWorldLoadPost(@Nullable WorldClient worldBefore, @Nullable WorldClient worldAfter, Minecraft mc)

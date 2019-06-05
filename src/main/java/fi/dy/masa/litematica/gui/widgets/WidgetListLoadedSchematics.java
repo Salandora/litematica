@@ -12,11 +12,10 @@ import fi.dy.masa.malilib.gui.interfaces.ISelectionListener;
 import fi.dy.masa.malilib.gui.widgets.WidgetListBase;
 import fi.dy.masa.malilib.gui.widgets.WidgetSearchBar;
 import fi.dy.masa.malilib.util.FileUtils;
-import net.minecraft.client.Minecraft;
 
 public class WidgetListLoadedSchematics extends WidgetListBase<LitematicaSchematic, WidgetSchematicEntry>
 {
-    public WidgetListLoadedSchematics(int x, int y, int width, int height, float zLevel,
+    public WidgetListLoadedSchematics(int x, int y, int width, int height,
             @Nullable ISelectionListener<LitematicaSchematic> selectionListener)
     {
         super(x, y, width, height, selectionListener);

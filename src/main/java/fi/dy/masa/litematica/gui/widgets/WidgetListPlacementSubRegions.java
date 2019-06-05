@@ -11,7 +11,6 @@ import fi.dy.masa.malilib.gui.LeftRight;
 import fi.dy.masa.malilib.gui.widgets.WidgetListBase;
 import fi.dy.masa.malilib.gui.widgets.WidgetSearchBar;
 import fi.dy.masa.malilib.util.AlphaNumComparator;
-import net.minecraft.client.Minecraft;
 
 public class WidgetListPlacementSubRegions extends WidgetListBase<SubRegionPlacement, WidgetPlacementSubRegion>
 {
@@ -56,7 +55,7 @@ public class WidgetListPlacementSubRegions extends WidgetListBase<SubRegionPlace
     protected WidgetPlacementSubRegion createListEntryWidget(int x, int y, int listIndex, boolean isOdd, SubRegionPlacement entry)
     {
         return new WidgetPlacementSubRegion(x, y, this.browserEntryWidth, this.getBrowserEntryHeightFor(entry),
-                isOdd, this.parent.getSchematicPlacement(), entry, listIndex, this, this.mc);
+                isOdd, this.parent.getSchematicPlacement(), entry, listIndex, this);
     }
 
     protected static class PlacementComparator extends AlphaNumComparator implements Comparator<SubRegionPlacement>

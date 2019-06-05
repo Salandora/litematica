@@ -26,8 +26,9 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
     private TaskTimer timer = new TaskTimer(1);
 
     protected final Minecraft mc;
-    protected String nameOnHud = "";
+    protected String name = "";
     protected List<String> infoHudLines = new ArrayList<>();
+    protected boolean finished;
     @Nullable protected ICompletionListener completionListener;
 
     protected TaskBase()
@@ -39,6 +40,12 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
     public TaskTimer getTimer()
     {
         return this.timer;
+    }
+
+    @Override
+    public String getDisplayName()
+    {
+        return this.name;
     }
 
     @Override
@@ -72,6 +79,22 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
     @Override
     public void stop()
     {
+        this.notifyListener();
+    }
+
+    protected void notifyListener()
+    {
+        if (this.completionListener != null)
+        {
+            if (this.finished)
+            {
+                this.completionListener.onTaskCompleted();
+            }
+            else
+            {
+                this.completionListener.onTaskAborted();
+            }
+        }
     }
 
     protected boolean areSurroundingChunksLoaded(ChunkPos pos, WorldClient world, int radius)
@@ -112,7 +135,7 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
             Collections.sort(list, PositionUtils.CHUNK_POS_COMPARATOR);
 
             String pre = GuiBase.TXT_WHITE + GuiBase.TXT_BOLD;
-            String title = I18n.format("litematica.gui.label.missing_chunks", this.nameOnHud, requiredChunks.size());
+            String title = I18n.format("litematica.gui.label.missing_chunks", this.name, requiredChunks.size());
             hudLines.add(String.format("%s%s%s", pre, title, GuiBase.TXT_RST));
 
             int maxLines = Math.min(list.size(), Configs.InfoOverlays.INFO_HUD_MAX_LINES.getIntegerValue());

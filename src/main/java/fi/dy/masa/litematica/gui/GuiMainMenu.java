@@ -48,7 +48,7 @@ public class GuiMainMenu extends GuiBase
         this.addButton(button, new ButtonListenerCycleAreaMode(this));
 
         label = I18n.format("litematica.gui.button.tool_mode", DataManager.getToolMode().getName());
-        int width2 = this.mc.fontRenderer.getStringWidth(label) + 10;
+        int width2 = this.getStringWidth(label) + 10;
 
         y = this.height - 26;
         button = new ButtonGeneric(x, y, width2, 20, label);
@@ -62,7 +62,9 @@ public class GuiMainMenu extends GuiBase
         this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.SCHEMATIC_MANAGER);
         y += 44;
 
-        y += 44;
+        y += 22;
+        this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.TASK_MANAGER);
+        y += 22;
         this.createChangeMenuButton(x, y, width, ButtonListenerChangeMenu.ButtonType.SCHEMATIC_PROJECTS_MANAGER);
     }
 
@@ -86,13 +88,13 @@ public class GuiMainMenu extends GuiBase
 
         for (ButtonListenerChangeMenu.ButtonType type : ButtonListenerChangeMenu.ButtonType.values())
         {
-            width = Math.max(width, this.mc.fontRenderer.getStringWidth(type.getDisplayName()) + 30);
+            width = Math.max(width, this.getStringWidth(type.getDisplayName()) + 30);
         }
 
         for (SelectionMode mode : SelectionMode.values())
         {
             String label = I18n.format("litematica.gui.button.area_selection_mode", mode.getDisplayName());
-            width = Math.max(width, this.mc.fontRenderer.getStringWidth(label) + 10);
+            width = Math.max(width, this.getStringWidth(label) + 10);
         }
 
         return width;
@@ -141,6 +143,9 @@ public class GuiMainMenu extends GuiBase
                 case SCHEMATIC_PLACEMENTS:
                     gui = new GuiSchematicPlacementsList();
                     break;
+                case TASK_MANAGER:
+                    gui = new GuiTaskManager();
+                    break;
                 case SCHEMATIC_PROJECTS_MANAGER:
                     DataManager.getSchematicProjectsManager().openSchematicProjectsGui();
                     return;
@@ -167,6 +172,8 @@ public class GuiMainMenu extends GuiBase
             LOAD_SCHEMATICS             ("litematica.gui.button.change_menu.load_schematics_to_memory", ButtonIcons.SCHEMATIC_BROWSER),
             // Edit Schematics (description or icon), or convert between formats
             SCHEMATIC_MANAGER           ("litematica.gui.button.change_menu.schematic_manager", ButtonIcons.SCHEMATIC_MANAGER),
+            // Open the Task Manager
+            TASK_MANAGER                ("litematica.gui.button.change_menu.task_manager", ButtonIcons.TASK_MANAGER),
             // Open the Schematic Projects browser
             SCHEMATIC_PROJECTS_MANAGER  ("litematica.gui.button.change_menu.schematic_projects_manager", ButtonIcons.SCHEMATIC_PROJECTS),
             // In-game Configuration GUI

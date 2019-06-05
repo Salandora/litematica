@@ -11,7 +11,6 @@ import fi.dy.masa.malilib.gui.LeftRight;
 import fi.dy.masa.malilib.gui.widgets.WidgetListBase;
 import fi.dy.masa.malilib.gui.widgets.WidgetSearchBar;
 import fi.dy.masa.malilib.util.AlphaNumComparator.AlphaNumStringComparator;
-import net.minecraft.client.Minecraft;
 
 public class WidgetListSelectionSubRegions extends WidgetListBase<String, WidgetSelectionSubRegion>
 {
@@ -58,6 +57,6 @@ public class WidgetListSelectionSubRegions extends WidgetListBase<String, Widget
     protected WidgetSelectionSubRegion createListEntryWidget(int x, int y, int listIndex, boolean isOdd, String entry)
     {
         return new WidgetSelectionSubRegion(x, y, this.browserEntryWidth, this.browserEntryHeight,
-                isOdd, entry, listIndex, this.mc, this.selection, this);
+                isOdd, entry, listIndex, this.selection, this);
     }
 }

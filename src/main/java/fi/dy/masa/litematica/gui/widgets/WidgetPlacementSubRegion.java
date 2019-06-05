@@ -29,13 +29,12 @@ public class WidgetPlacementSubRegion extends WidgetListEntryBase<SubRegionPlace
     private final SchematicPlacement schematicPlacement;
     private final WidgetListPlacementSubRegions parent;
     private final SubRegionPlacement placement;
-    private final Minecraft mc;
     private final boolean isOdd;
     private int buttonsStartX;
 
     public WidgetPlacementSubRegion(int x, int y, int width, int height, boolean isOdd,
             SchematicPlacement schematicPlacement, SubRegionPlacement placement, int listIndex,
-            WidgetListPlacementSubRegions parent, Minecraft mc)
+            WidgetListPlacementSubRegions parent)
     {
         super(x, y, width, height, placement, listIndex);
 
@@ -43,7 +42,6 @@ public class WidgetPlacementSubRegion extends WidgetListEntryBase<SubRegionPlace
         this.schematicPlacement = schematicPlacement;
         this.placement = placement;
         this.isOdd = isOdd;
-        this.mc = mc;
 
         int posX = x + width - 2;
         int posY = y + 1;
@@ -59,7 +57,7 @@ public class WidgetPlacementSubRegion extends WidgetListEntryBase<SubRegionPlace
     private int createButtonGeneric(int xRight, int y, WidgetSchematicPlacement.ButtonListener.ButtonType type)
     {
         String label = I18n.format(type.getTranslationKey());
-        int len = this.mc.fontRenderer.getStringWidth(label) + 10;
+        int len = this.getStringWidth(label) + 10;
         xRight -= len;
         this.addButton(new ButtonGeneric(xRight, y, len, 20, label), new ButtonListener(type, this));
 
@@ -111,7 +109,7 @@ public class WidgetPlacementSubRegion extends WidgetListEntryBase<SubRegionPlace
 
         String name = this.placement.getName();
         String pre = this.placement.isEnabled() ? TextFormatting.GREEN.toString() : TextFormatting.RED.toString();
-        this.mc.fontRenderer.drawString(pre + name, this.x + 20, this.y + 7, 0xFFFFFFFF);
+        this.drawString(pre + name, this.x + 20, this.y + 7, 0xFFFFFFFF);
 
         Icons icon;
 
