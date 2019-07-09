@@ -7,6 +7,7 @@ import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.util.EntityUtils;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.util.InfoUtils;
+import fi.dy.masa.malilib.util.IntBoundingBox;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.command.arguments.BlockStateParser;
 import net.minecraft.entity.Entity;
@@ -14,12 +15,9 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MutableBoundingBox;
-import net.minecraft.util.registry.IRegistry;
 
 public class TaskFillArea extends TaskProcessChunkBase
 {
@@ -42,35 +40,14 @@ public class TaskFillArea extends TaskProcessChunkBase
         this.replaceState = replaceState;
         this.removeEntities = removeEntities;
 
-        ResourceLocation rl = IRegistry.BLOCK.getKey(fillState.getBlock());
-        String strName = null;
+        String blockString = BlockStateParser.toString(fillState, null);
 
-        if (rl != null)
+        if (replaceState != null)
         {
-            String blockName = rl.toString();
-            strName = blockName + " " + BlockStateParser.toString(fillState, null);
-
-            if (replaceState != null)
-            {
-                rl = IRegistry.BLOCK.getKey(replaceState.getBlock());
-
-                if (rl != null)
-                {
-                    strName += " replace " + rl.toString();
-                }
-                else
-                {
-                    InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica-message.error.invalid_block", replaceState.toString());
-                    strName = null;
-                }
-            }
-        }
-        else
-        {
-            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica-message.error.invalid_block", fillState.toString());
+            blockString += " replace " + BlockStateParser.toString(replaceState, null);
         }
 
-        this.blockString = strName;
+        this.blockString = blockString;
 
         this.addBoxesPerChunks(boxes);
         this.updateInfoHudLinesMissingChunks(this.requiredChunks);
@@ -96,7 +73,7 @@ public class TaskFillArea extends TaskProcessChunkBase
             this.mc.player.sendChatMessage("/gamerule sendCommandFeedback false");
         }
 
-        for (MutableBoundingBox box : this.getBoxesInChunk(pos))
+        for (IntBoundingBox box : this.getBoxesInChunk(pos))
         {
             if (this.isClientWorld)
             {
@@ -113,7 +90,7 @@ public class TaskFillArea extends TaskProcessChunkBase
         return true;
     }
 
-    protected void fillBoxDirect(MutableBoundingBox box, boolean removeEntities)
+    protected void fillBoxDirect(IntBoundingBox box, boolean removeEntities)
     {
         if (removeEntities)
         {
@@ -158,7 +135,7 @@ public class TaskFillArea extends TaskProcessChunkBase
         }
     }
 
-    protected void fillBoxCommands(MutableBoundingBox box, boolean removeEntities)
+    protected void fillBoxCommands(IntBoundingBox box, boolean removeEntities)
     {
         if (removeEntities)
         {
@@ -199,7 +176,10 @@ public class TaskFillArea extends TaskProcessChunkBase
     {
         if (this.finished)
         {
-            InfoUtils.showGuiMessage(MessageType.SUCCESS, "litematica.message.area_filled");
+            if (this.printCompletionMessage)
+            {
+                InfoUtils.showGuiMessage(MessageType.SUCCESS, "litematica.message.area_filled");
+            }
         }
         else
         {

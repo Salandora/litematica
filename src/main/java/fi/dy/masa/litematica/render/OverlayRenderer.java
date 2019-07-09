@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import javax.annotation.Nullable;
 import org.lwjgl.opengl.GL11;
 import com.google.common.collect.ImmutableMap;
@@ -29,11 +28,13 @@ import fi.dy.masa.litematica.util.RayTraceUtils;
 import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.malilib.config.HudAlignment;
+import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.LeftRight;
+import fi.dy.masa.malilib.util.BlockUtils;
 import fi.dy.masa.malilib.util.Color4f;
+import fi.dy.masa.malilib.util.GuiUtils;
 import fi.dy.masa.malilib.util.WorldUtils;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.MainWindow;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
@@ -43,13 +44,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
-import net.minecraft.state.DirectionProperty;
-import net.minecraft.state.IProperty;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.registry.IRegistry;
-import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 
 public class OverlayRenderer
@@ -141,8 +139,8 @@ public class OverlayRenderer
             GlStateManager.disableLighting();
             GlStateManager.disableTexture2D();
             GlStateManager.alphaFunc(GL11.GL_GREATER, 0.01F);
-            GlStateManager.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
             GlStateManager.pushMatrix();
+            fi.dy.masa.malilib.render.RenderUtils.setupBlend();
 
             if (renderAreas)
             {
@@ -512,7 +510,7 @@ public class OverlayRenderer
         boolean useBackground = true;
         boolean useShadow = false;
 
-        fi.dy.masa.malilib.render.RenderUtils.renderText(mc, x, y, fontScale, textColor, bgColor, alignment, useBackground, useShadow, this.blockInfoLines);
+        fi.dy.masa.malilib.render.RenderUtils.renderText(x, y, fontScale, textColor, bgColor, alignment, useBackground, useShadow, this.blockInfoLines);
     }
 
     private boolean renderVerifierOverlay(Minecraft mc)
@@ -532,8 +530,7 @@ public class OverlayRenderer
                 if (mismatch != null)
                 {
                     BlockMismatchInfo info = new BlockMismatchInfo(mismatch.stateExpected, mismatch.stateFound);
-                    MainWindow window = mc.mainWindow;
-                    info.render(window.getScaledWidth() / 2 - info.getTotalWidth() / 2, window.getScaledHeight() / 2 + 6, mc);
+                    info.render(GuiUtils.getScaledWindowWidth() / 2 - info.getTotalWidth() / 2, GuiUtils.getScaledWindowHeight() / 2 + 6, mc);
                     return true;
                 }
             }
@@ -550,10 +547,7 @@ public class OverlayRenderer
         BlockPos pos = traceWrapper.getRayTraceResult().getBlockPos();
 
         IBlockState stateClient = mc.world.getBlockState(pos);
-        //stateClient = stateClient.getActualState(mc.world, pos);
-
         IBlockState stateSchematic = worldSchematic.getBlockState(pos);
-        //stateSchematic = stateSchematic.getActualState(worldSchematic, pos);
 
         int offY = Configs.InfoOverlays.BLOCK_INFO_OVERLAY_OFFSET_Y.getIntegerValue();
         BlockInfoAlignment align = (BlockInfoAlignment) Configs.InfoOverlays.BLOCK_INFO_OVERLAY_ALIGNMENT.getOptionListValue();
@@ -562,7 +556,7 @@ public class OverlayRenderer
         ItemUtils.setItemForBlock(mc.world, pos, stateClient);
 
         // Not just a missing block
-        if (stateSchematic != stateClient && stateClient.isAir() == false && stateSchematic.isAir() == false)
+        if (stateSchematic != stateClient && stateClient != air && stateSchematic != air)
         {
             int invHeight = RenderUtils.renderInventoryOverlays(align, offY, worldSchematic, worldClient, pos, mc);
 
@@ -603,17 +597,16 @@ public class OverlayRenderer
 
     protected void getOverlayPosition(int width, int height, int offY, int invHeight, Minecraft mc)
     {
-        MainWindow sr = mc.mainWindow;
         BlockInfoAlignment align = (BlockInfoAlignment) Configs.InfoOverlays.BLOCK_INFO_OVERLAY_ALIGNMENT.getOptionListValue();
 
         switch (align)
         {
             case CENTER:
-                this.blockInfoX = sr.getScaledWidth() / 2 - width / 2;
-                this.blockInfoY = sr.getScaledHeight() / 2 + offY;
+                this.blockInfoX = GuiUtils.getScaledWindowWidth() / 2 - width / 2;
+                this.blockInfoY = GuiUtils.getScaledWindowHeight() / 2 + offY;
                 break;
             case TOP_CENTER:
-                this.blockInfoX = sr.getScaledWidth() / 2 - width / 2;
+                this.blockInfoX = GuiUtils.getScaledWindowWidth() / 2 - width / 2;
                 this.blockInfoY = invHeight + offY + (invHeight > 0 ? offY : 0);
                 break;
         }
@@ -628,7 +621,7 @@ public class OverlayRenderer
 
         World worldSchematic = SchematicWorldHandler.getSchematicWorld();
         IBlockState stateSchematic = worldSchematic.getBlockState(pos);
-        String ul = TextFormatting.UNDERLINE.toString();
+        String ul = GuiBase.TXT_UNDERLINE;
 
         if (stateSchematic != stateClient && stateClient.isAir() == false && stateSchematic.isAir() == false)
         {
@@ -646,35 +639,13 @@ public class OverlayRenderer
         }
     }
 
-    @SuppressWarnings("unchecked")
     private <T extends Comparable<T>> void addBlockInfoLines(IBlockState state)
     {
         this.blockInfoLines.add(String.valueOf(IRegistry.BLOCK.getKey(state.getBlock())));
 
-        for (Entry <IProperty<?>, Comparable<?>> entry : state.getValues().entrySet())
+        for (String line : BlockUtils.getFormattedBlockStateProperties(state))
         {
-            IProperty<T> property = (IProperty<T>) entry.getKey();
-            T value = (T) entry.getValue();
-            String valueName = property.getName(value);
-
-            if (property instanceof DirectionProperty)
-            {
-                valueName = TextFormatting.GOLD + valueName;
-            }
-            else if (Boolean.TRUE.equals(value))
-            {
-                valueName = TextFormatting.GREEN + valueName;
-            }
-            else if (Boolean.FALSE.equals(value))
-            {
-                valueName = TextFormatting.RED + valueName;
-            }
-            else if (Integer.class.equals(property.getValueClass()))
-            {
-                valueName = TextFormatting.GREEN + valueName;
-            }
-
-            this.blockInfoLines.add(property.getName() + ": " + valueName);
+            this.blockInfoLines.add(line);
         }
     }
 
@@ -716,10 +687,8 @@ public class OverlayRenderer
             GlStateManager.depthMask(false);
             GlStateManager.disableLighting();
             GlStateManager.disableCull();
-            GlStateManager.enableBlend();
-            //GlStateManager.pushMatrix();
-            //GlStateManager.disableDepth();
             GlStateManager.disableTexture2D();
+            fi.dy.masa.malilib.render.RenderUtils.setupBlend();
 
             if (direction)
             {
@@ -734,7 +703,6 @@ public class OverlayRenderer
 
             GlStateManager.enableTexture2D();
             //GlStateManager.enableDepth();
-            //GlStateManager.popMatrix();
             GlStateManager.disableBlend();
             GlStateManager.enableCull();
             GlStateManager.depthMask(true);
@@ -743,9 +711,8 @@ public class OverlayRenderer
 
     public void renderPreviewFrame(Minecraft mc)
     {
-        MainWindow sr = mc.mainWindow;
-        int width = sr.getScaledWidth();
-        int height = sr.getScaledHeight();
+        int width = GuiUtils.getScaledWindowWidth();
+        int height = GuiUtils.getScaledWindowHeight();
         int x = width >= height ? (width - height) / 2 : 0;
         int y = height >= width ? (height - width) / 2 : 0;
         int longerSide = Math.min(width, height);

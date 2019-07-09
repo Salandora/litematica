@@ -15,7 +15,6 @@ import fi.dy.masa.litematica.gui.GuiSchematicPlacementsList;
 import fi.dy.masa.litematica.gui.GuiSchematicVerifier;
 import fi.dy.masa.litematica.gui.GuiSubRegionConfiguration;
 import fi.dy.masa.litematica.materials.MaterialListBase;
-import fi.dy.masa.litematica.mixin.IMixinKeyBinding;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement;
 import fi.dy.masa.litematica.selection.AreaSelection;
@@ -27,12 +26,14 @@ import fi.dy.masa.litematica.util.EntityUtils;
 import fi.dy.masa.litematica.util.InventoryUtils;
 import fi.dy.masa.litematica.util.PositionUtils;
 import fi.dy.masa.litematica.util.PositionUtils.Corner;
+import fi.dy.masa.litematica.util.RayTraceUtils;
 import fi.dy.masa.litematica.util.SchematicUtils;
 import fi.dy.masa.litematica.util.SchematicWorldRefresher;
 import fi.dy.masa.litematica.util.ToolUtils;
 import fi.dy.masa.litematica.util.WorldUtils;
 import fi.dy.masa.malilib.config.IConfigBoolean;
 import fi.dy.masa.malilib.config.options.ConfigString;
+import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.hotkeys.IHotkeyCallback;
 import fi.dy.masa.malilib.hotkeys.IKeybind;
@@ -55,6 +56,7 @@ public class KeyCallbacks
 
         Configs.Generic.PICK_BLOCKABLE_SLOTS.setValueChangeCallback(valueChangeCallback);
 
+        Hotkeys.CLONE_SELECTION.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.EXECUTE_OPERATION.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.LAYER_MODE_NEXT.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.LAYER_MODE_PREVIOUS.getKeybind().setCallback(callbackHotkeys);
@@ -88,6 +90,7 @@ public class KeyCallbacks
         Hotkeys.TOOL_SELECT_ELEMENTS.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.TOOL_SELECT_MODIFIER_BLOCK_1.getKeybind().setCallback(callbackHotkeys);
         Hotkeys.TOOL_SELECT_MODIFIER_BLOCK_2.getKeybind().setCallback(callbackHotkeys);
+        Hotkeys.UNLOAD_CURRENT_SCHEMATIC.getKeybind().setCallback(callbackHotkeys);
 
         Hotkeys.ADD_SELECTION_BOX.getKeybind().setCallback(callbackMessage);
         Hotkeys.DELETE_SELECTION_BOX.getKeybind().setCallback(callbackMessage);
@@ -180,9 +183,19 @@ public class KeyCallbacks
                     if (mode.getUsesAreaSelection() || projectMode)
                     {
                         SelectionManager sm = DataManager.getSelectionManager();
-                        boolean moveEverything = Hotkeys.SELECTION_GRAB_MODIFIER.getKeybind().isKeybindHeld();
+                        boolean grabModifier = Hotkeys.SELECTION_GRAB_MODIFIER.getKeybind().isKeybindHeld();
+                        boolean moveEverything = grabModifier;
 
-                        if (Configs.Generic.SELECTION_CORNERS_MODE.getOptionListValue() == CornerSelectionMode.CORNERS)
+                        if (grabModifier && mode == ToolMode.MOVE)
+                        {
+                            BlockPos pos = RayTraceUtils.getTargetedPosition(this.mc.world, this.mc.player, maxDistance, false);
+
+                            if (pos != null)
+                            {
+                                SchematicUtils.moveCurrentlySelectedWorldRegionTo(pos, mc);
+                            }
+                        }
+                        else if (Configs.Generic.SELECTION_CORNERS_MODE.getOptionListValue() == CornerSelectionMode.CORNERS)
                         {
                             Corner corner = isToolPrimary ? Corner.CORNER_1 : Corner.CORNER_2;
                             sm.setPositionOfCurrentSelectionToRayTrace(this.mc, corner, moveEverything, maxDistance);
@@ -240,19 +253,19 @@ public class KeyCallbacks
 
             if (key == Hotkeys.OPEN_GUI_MAIN_MENU.getKeybind())
             {
-                this.mc.displayGuiScreen(new GuiMainMenu());
+                GuiBase.openGui(new GuiMainMenu());
                 return true;
             }
             else if (key == Hotkeys.OPEN_GUI_LOADED_SCHEMATICS.getKeybind())
             {
-                this.mc.displayGuiScreen(new GuiSchematicLoadedList());
+                GuiBase.openGui(new GuiSchematicLoadedList());
                 return true;
             }
             else if (key == Hotkeys.OPEN_GUI_SELECTION_MANAGER.getKeybind())
             {
                 if (DataManager.getSchematicProjectsManager().hasProjectOpen() == false)
                 {
-                    this.mc.displayGuiScreen(new GuiAreaSelectionManager());
+                    GuiBase.openGui(new GuiAreaSelectionManager());
                 }
                 else
                 {
@@ -263,7 +276,7 @@ public class KeyCallbacks
             }
             else if (key == Hotkeys.OPEN_GUI_SCHEMATIC_PLACEMENTS.getKeybind())
             {
-                this.mc.displayGuiScreen(new GuiSchematicPlacementsList());
+                GuiBase.openGui(new GuiSchematicPlacementsList());
                 return true;
             }
             else if (key == Hotkeys.OPEN_GUI_SCHEMATIC_PROJECTS.getKeybind())
@@ -275,11 +288,11 @@ public class KeyCallbacks
             {
                 if (DataManager.getConfigGuiTab() == ConfigGuiTab.RENDER_LAYERS)
                 {
-                    this.mc.displayGuiScreen(new GuiRenderLayer());
+                    GuiBase.openGui(new GuiRenderLayer());
                 }
                 else
                 {
-                    this.mc.displayGuiScreen(new GuiConfigs());
+                    GuiBase.openGui(new GuiConfigs());
                 }
 
                 return true;
@@ -294,16 +307,16 @@ public class KeyCallbacks
 
                     if (placement != null)
                     {
-                        this.mc.displayGuiScreen(new GuiSubRegionConfiguration(schematicPlacement, placement));
+                        GuiBase.openGui(new GuiSubRegionConfiguration(schematicPlacement, placement));
                     }
                     else
                     {
-                        this.mc.displayGuiScreen(new GuiPlacementConfiguration(schematicPlacement));
+                        GuiBase.openGui(new GuiPlacementConfiguration(schematicPlacement));
                     }
                 }
                 else
                 {
-                    InfoUtils.printActionbarMessage("litematica.message.error.no_placement_selected");
+                    InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_placement_selected");
                 }
 
                 return true;
@@ -314,11 +327,11 @@ public class KeyCallbacks
 
                 if (schematicPlacement != null)
                 {
-                    this.mc.displayGuiScreen(new GuiSchematicVerifier(schematicPlacement));
+                    GuiBase.openGui(new GuiSchematicVerifier(schematicPlacement));
                 }
                 else
                 {
-                    InfoUtils.printActionbarMessage("litematica.message.error.no_placement_selected");
+                    InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_placement_selected");
                 }
 
                 return true;
@@ -339,13 +352,13 @@ public class KeyCallbacks
                     }
                     else
                     {
-                        InfoUtils.printActionbarMessage("litematica.message.error.no_placement_selected");
+                        InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_placement_selected");
                     }
                 }
 
                 if (materialList != null)
                 {
-                    this.mc.displayGuiScreen(new GuiMaterialList(materialList));
+                    GuiBase.openGui(new GuiMaterialList(materialList));
                 }
 
                 return true;
@@ -360,8 +373,9 @@ public class KeyCallbacks
                 }
                 else
                 {
-                    InfoUtils.printActionbarMessage("litematica.message.error.no_area_selected");
+                    InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_area_selected");
                 }
+
                 return true;
             }
             else if (key == Hotkeys.RERENDER_SCHEMATIC.getKeybind())
@@ -408,6 +422,7 @@ public class KeyCallbacks
             {
                 if (EntityUtils.shouldPickBlock(this.mc.player))
                 {
+
                     int keyCodeUse = ((IMixinKeyBinding)this.mc.gameSettings.keyBindUseItem).getInput().getKeyCode();
 
                     // Only do the pick block here, if it's not bound to the use button.
@@ -442,6 +457,11 @@ public class KeyCallbacks
                 {
                     DataManager.getSchematicProjectsManager().cycleVersion(-1);
                 }
+                return true;
+            }
+            else if (key == Hotkeys.CLONE_SELECTION.getKeybind())
+            {
+                SchematicUtils.cloneSelectionArea(this.mc);
                 return true;
             }
             else if (key == Hotkeys.EXECUTE_OPERATION.getKeybind() && ((hasTool && toolEnabled) || Configs.Generic.EXECUTE_REQUIRE_TOOL.getBooleanValue() == false))
@@ -495,6 +515,11 @@ public class KeyCallbacks
                     PositionUtils.growOrShrinkCurrentSelection(false);
                     return true;
                 }
+            }
+            else if (key == Hotkeys.UNLOAD_CURRENT_SCHEMATIC.getKeybind())
+            {
+                SchematicUtils.unloadCurrentlySelectedSchematic();
+                return true;
             }
 
             return false;
@@ -560,7 +585,16 @@ public class KeyCallbacks
                     if (selection != null)
                     {
                         BlockPos pos = new BlockPos(this.mc.player.getPositionVector());
-                        selection.moveEntireSelectionTo(pos, true);
+
+                        if (mode == ToolMode.MOVE)
+                        {
+                            SchematicUtils.moveCurrentlySelectedWorldRegionTo(pos, this.mc);
+                        }
+                        else
+                        {
+                            selection.moveEntireSelectionTo(pos, true);
+                        }
+
                         return true;
                     }
                 }

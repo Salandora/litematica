@@ -8,13 +8,11 @@ import fi.dy.masa.litematica.render.infohud.RenderPhase;
 import fi.dy.masa.malilib.config.HudAlignment;
 import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.render.RenderUtils;
-import net.minecraft.client.MainWindow;
+import fi.dy.masa.malilib.util.GuiUtils;
+import fi.dy.masa.malilib.util.StringUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.resources.I18n;
 
 public class MaterialListHudRenderer implements IInfoHudRenderer
 {
@@ -82,7 +80,6 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
             return 0;
         }
 
-        MainWindow window = mc.mainWindow;
         FontRenderer font = mc.fontRenderer;
         final double scale = Configs.InfoOverlays.MATERIAL_LIST_HUD_SCALE.getDoubleValue();
         final int maxLines = Configs.InfoOverlays.MATERIAL_LIST_HUD_MAX_LINES.getIntegerValue();
@@ -122,10 +119,10 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
         {
             case TOP_RIGHT:
             case BOTTOM_RIGHT:
-                posX = (int) ((window.getScaledWidth() / scale) - maxLineLength - xOffset - bgMargin);
+                posX = (int) ((GuiUtils.getScaledWindowWidth() / scale) - maxLineLength - xOffset - bgMargin);
                 break;
             case CENTER:
-                posX = (int) ((window.getScaledWidth() / scale / 2) - (maxLineLength / 2) - xOffset);
+                posX = (int) ((GuiUtils.getScaledWindowWidth() / scale / 2) - (maxLineLength / 2) - xOffset);
                 break;
             default:
         }
@@ -146,11 +143,11 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
 
         if (useBackground)
         {
-            Gui.drawRect(posX - bgMargin, posY - bgMargin,
-                         posX + maxLineLength + bgMargin, posY + contentHeight, bgColor);
+            RenderUtils.drawRect(posX - bgMargin, posY - bgMargin,
+                         maxLineLength + bgMargin * 2, contentHeight + bgMargin, bgColor);
         }
 
-        String title = GuiBase.TXT_BOLD + I18n.format("litematica.gui.button.material_list") + GuiBase.TXT_RST;
+        String title = GuiBase.TXT_BOLD + StringUtils.translate("litematica.gui.button.material_list") + GuiBase.TXT_RST;
 
         if (useShadow)
         {
@@ -195,9 +192,8 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
         y = posY;
 
         GlStateManager.enableRescaleNormal();
-        GlStateManager.enableBlend();
-        GlStateManager.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-        RenderHelper.enableGUIStandardItemLighting();
+        RenderUtils.setupBlend();
+        RenderUtils.enableGuiItemLighting();
 
         for (int i = 0; i < size; ++i)
         {
@@ -205,7 +201,7 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
             y += lineHeight;
         }
 
-        RenderHelper.disableStandardItemLighting();
+        RenderUtils.disableItemLighting();
         GlStateManager.disableRescaleNormal();
         GlStateManager.disableBlend();
 
@@ -227,7 +223,7 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
         {
             if (boxCount >= 1.0)
             {
-                return String.format("%d (%.2f %s)", count, boxCount, I18n.format("litematica.gui.label.material_list.abbr.shulker_box"));
+                return String.format("%d (%.2f %s)", count, boxCount, StringUtils.translate("litematica.gui.label.material_list.abbr.shulker_box"));
             }
             else if (remainder > 0)
             {
@@ -242,6 +238,5 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
         {
             return String.format("%d", count);
         }
-
     }
 }

@@ -31,18 +31,21 @@ import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
 import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper.HitType;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.litematica.world.WorldSchematic;
+import fi.dy.masa.malilib.config.options.ConfigHotkey;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.util.InfoUtils;
+import fi.dy.masa.malilib.util.IntBoundingBox;
 import fi.dy.masa.malilib.util.JsonUtils;
 import fi.dy.masa.malilib.util.LayerMode;
+import fi.dy.masa.malilib.util.StringUtils;
 import fi.dy.masa.malilib.util.SubChunkPos;
-import fi.dy.masa.malilib.util.WorldUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.*;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
@@ -57,6 +60,16 @@ public class SchematicPlacementManager
 
     @Nullable
     private SchematicPlacement selectedPlacement;
+
+    public boolean hasPendingRebuilds()
+    {
+        return this.chunksToRebuild.isEmpty() == false;
+    }
+
+    public boolean hasPendingRebuildFor(ChunkPos pos)
+    {
+        return this.chunksToRebuild.contains(pos);
+    }
 
     public boolean processQueuedChunks()
     {
@@ -108,17 +121,13 @@ public class SchematicPlacementManager
                     worldClient.getChunkProvider().getChunk(pos.x, pos.z, false, false) != null)
                 {
                     // Wipe the old chunk if it exists
-                    if (worldSchematic.getChunkProvider().getChunk(pos.x, pos.z, false, false) != null)
-                    {
-                        //System.out.printf("wiping chunk at %s\n", pos);
-                        this.unloadSchematicChunk(worldSchematic, pos.x, pos.z);
-                    }
+                    this.unloadSchematicChunk(worldSchematic, pos.x, pos.z);
 
                     //System.out.printf("loading chunk at %s\n", pos);
                     worldSchematic.getChunkProvider().loadChunk(pos.x, pos.z);
                 }
 
-                if (worldSchematic.getChunkProvider().getChunk(pos.x, pos.z, false, false) != null)
+                if (worldSchematic.getChunkProvider().isChunkLoaded(pos.x, pos.z))
                 {
                     //System.out.printf("placing at %s\n", pos);
                     Collection<SchematicPlacement> placements = this.schematicsTouchingChunk.get(pos);
@@ -133,7 +142,8 @@ public class SchematicPlacementManager
                             }
                         }
 
-                        worldSchematic.markBlockRangeForRenderUpdate(pos.x << 4, 0, pos.z << 4, (pos.x << 4) + 15, 256, (pos.z << 4) + 15);
+                        int maxY = worldSchematic.getChunkProvider().getChunk(pos.x, pos.z).getTopFilledSegment() + 15;
+                        worldSchematic.markBlockRangeForRenderUpdate(pos.x << 4, 0, pos.z << 4, (pos.x << 4) + 15, maxY, (pos.z << 4) + 15);
                     }
 
                     iter.remove();
@@ -167,10 +177,10 @@ public class SchematicPlacementManager
 
     private void unloadSchematicChunk(WorldSchematic worldSchematic, int chunkX, int chunkZ)
     {
-        if (worldSchematic.getChunkProvider().getChunk(chunkX, chunkZ, false, false) != null)
+        if (worldSchematic.getChunkProvider().isChunkLoaded(chunkX, chunkZ))
         {
             //System.out.printf("unloading chunk at %d, %d\n", chunkX, chunkZ);
-            worldSchematic.markBlockRangeForRenderUpdate((chunkX << 4) - 1, 0, (chunkZ << 4) - 1, (chunkX << 4) + 16, 256, (chunkZ << 4) + 16);
+            worldSchematic.markBlockRangeForRenderUpdate((chunkX << 4), 0, (chunkZ << 4), (chunkX << 4) + 15, 255, (chunkZ << 4) + 15);
             worldSchematic.getChunkProvider().unloadChunk(chunkX, chunkZ);
         }
     }
@@ -180,9 +190,9 @@ public class SchematicPlacementManager
         return this.schematicPlacements;
     }
 
-    public List<MutableBoundingBox> getTouchedBoxesInSubChunk(SubChunkPos subChunk)
+    public List<IntBoundingBox> getTouchedBoxesInSubChunk(SubChunkPos subChunk)
     {
-        List<MutableBoundingBox> list = new ArrayList<>();
+        List<IntBoundingBox> list = new ArrayList<>();
 
         for (PlacementPart part : this.touchedVolumesInSubChunk.get(subChunk))
         {
@@ -208,11 +218,11 @@ public class SchematicPlacementManager
         {
             this.schematicPlacements.add(placement);
             this.addTouchedChunksFor(placement);
-            StatusInfoRenderer.startOverrideDelay();
+            StatusInfoRenderer.getInstance().startOverrideDelay();
 
             if (printMessages)
             {
-                InfoUtils.showGuiMessage(MessageType.SUCCESS, I18n.format("litematica.message.schematic_placement_created", placement.getName()));
+                InfoUtils.showGuiMessage(MessageType.SUCCESS, StringUtils.translate("litematica.message.schematic_placement_created", placement.getName()));
 
                 if (Configs.InfoOverlays.WARN_DISABLED_RENDERING.getBooleanValue())
                 {
@@ -225,20 +235,35 @@ public class SchematicPlacementManager
 
                     if (Configs.Visuals.ENABLE_RENDERING.getBooleanValue() == false)
                     {
-                        String hotkey = Hotkeys.TOGGLE_ALL_RENDERING.getKeybind().getKeysDisplayString();
-                        InfoUtils.showGuiAndInGameMessage(MessageType.WARNING, 8000, "litematica.message.warn.main_rendering_disabled", hotkey);
+                        ConfigHotkey hotkey = Hotkeys.TOGGLE_ALL_RENDERING;
+                        String configName = Configs.Visuals.ENABLE_RENDERING.getName();
+                        String hotkeyName = hotkey.getName();
+                        String hotkeyVal = hotkey.getKeybind().getKeysDisplayString();
+
+                        InfoUtils.showGuiAndInGameMessage(MessageType.WARNING, 8000,
+                                "litematica.message.warn.main_rendering_disabled", configName, hotkeyName, hotkeyVal);
                     }
 
                     if (Configs.Visuals.ENABLE_SCHEMATIC_RENDERING.getBooleanValue() == false)
                     {
-                        String hotkey = Hotkeys.TOGGLE_SCHEMATIC_RENDERING.getKeybind().getKeysDisplayString();
-                        InfoUtils.showGuiAndInGameMessage(MessageType.WARNING, 8000, "litematica.message.warn.schematic_rendering_disabled", hotkey);
+                        ConfigHotkey hotkey = Hotkeys.TOGGLE_SCHEMATIC_RENDERING;
+                        String configName = Configs.Visuals.ENABLE_SCHEMATIC_RENDERING.getName();
+                        String hotkeyName = hotkey.getName();
+                        String hotkeyVal = hotkey.getKeybind().getKeysDisplayString();
+
+                        InfoUtils.showGuiAndInGameMessage(MessageType.WARNING, 8000,
+                                "litematica.message.warn.schematic_rendering_disabled", configName, hotkeyName, hotkeyVal);
                     }
 
                     if (Configs.Visuals.ENABLE_SCHEMATIC_BLOCKS.getBooleanValue() == false)
                     {
-                        String hotkey = Hotkeys.TOGGLE_SCHEMATIC_BLOCK_RENDERING.getKeybind().getKeysDisplayString();
-                        InfoUtils.showGuiAndInGameMessage(MessageType.WARNING, 8000, "litematica.message.warn.schematic_blocks_rendering_disabled", hotkey);
+                        ConfigHotkey hotkey = Hotkeys.TOGGLE_SCHEMATIC_BLOCK_RENDERING;
+                        String configName = Configs.Visuals.ENABLE_SCHEMATIC_BLOCKS.getName();
+                        String hotkeyName = hotkey.getName();
+                        String hotkeyVal = hotkey.getKeybind().getKeysDisplayString();
+
+                        InfoUtils.showGuiAndInGameMessage(MessageType.WARNING, 8000,
+                                "litematica.message.warn.schematic_blocks_rendering_disabled", configName, hotkeyName, hotkeyVal);
                     }
                 }
             }
@@ -422,11 +447,11 @@ public class SchematicPlacementManager
             {
                 if (placement.matchesRequirement(RequiredEnabled.RENDERING_ENABLED))
                 {
-                    Map<String, MutableBoundingBox> boxMap = placement.getBoxesWithinChunk(pos.x, pos.z);
+                    Map<String, IntBoundingBox> boxMap = placement.getBoxesWithinChunk(pos.x, pos.z);
 
-                    for (Map.Entry<String, MutableBoundingBox> entry : boxMap.entrySet())
+                    for (Map.Entry<String, IntBoundingBox> entry : boxMap.entrySet())
                     {
-                        MutableBoundingBox bbOrig = entry.getValue();
+                        IntBoundingBox bbOrig = entry.getValue();
                         final int startCY = (bbOrig.minY >> 4);
                         final int endCY = (bbOrig.maxY >> 4);
 
@@ -435,7 +460,7 @@ public class SchematicPlacementManager
                             int y1 = Math.max((cy << 4)     , bbOrig.minY);
                             int y2 = Math.min((cy << 4) + 15, bbOrig.maxY);
 
-                            MutableBoundingBox bbSub = new MutableBoundingBox(bbOrig.minX, y1, bbOrig.minZ, bbOrig.maxX, y2, bbOrig.maxZ);
+                            IntBoundingBox bbSub = new IntBoundingBox(bbOrig.minX, y1, bbOrig.minZ, bbOrig.maxX, y2, bbOrig.maxZ);
                             PlacementPart part = new PlacementPart(placement, entry.getKey(), bbSub);
                             this.touchedVolumesInSubChunk.put(new SubChunkPos(pos.x, cy, pos.z), part);
                             //System.out.printf("updateTouchedBoxesInChunk box at %d, %d, %d: %s\n", pos.x, cy, pos.z, bbSub);
@@ -625,6 +650,11 @@ public class SchematicPlacementManager
 
     public void pastePlacementToWorld(final SchematicPlacement schematicPlacement, boolean changedBlocksOnly, Minecraft mc)
     {
+        this.pastePlacementToWorld(schematicPlacement, changedBlocksOnly, true, mc);
+    }
+
+    public void pastePlacementToWorld(final SchematicPlacement schematicPlacement, boolean changedBlocksOnly, boolean printMessage, Minecraft mc)
+    {
         if (mc.player != null && mc.player.abilities.isCreativeMode)
         {
             if (schematicPlacement != null)
@@ -640,28 +670,35 @@ public class SchematicPlacementManager
                     final WorldServer world = mc.getIntegratedServer().getWorld(mc.player.getEntityWorld().dimension.getType());
                     final LitematicaSchematic schematic = schematicPlacement.getSchematic();
 
-                    world.addScheduledTask(new Runnable()
+                    world.addScheduledTask(() ->
                     {
-                        public void run()
+                        if (schematic.placeToWorld(world, schematicPlacement, false))
                         {
-                            if (schematic.placeToWorld(world, schematicPlacement, false))
+                            if (printMessage)
                             {
                                 InfoUtils.showGuiOrActionBarMessage(MessageType.SUCCESS, "litematica.message.schematic_pasted");
                             }
-                            else
-                            {
-                                InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.schematic_paste_failed");
-                            }
+                        }
+                        else
+                        {
+                            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.schematic_paste_failed");
                         }
                     });
 
-                    InfoUtils.showGuiOrActionBarMessage(MessageType.INFO, "litematica.message.scheduled_task_added");
+                    if (printMessage)
+                    {
+                        InfoUtils.showGuiOrActionBarMessage(MessageType.INFO, "litematica.message.scheduled_task_added");
+                    }
                 }
                 else
                 {
                     TaskPasteSchematicSetblock task = new TaskPasteSchematicSetblock(schematicPlacement, changedBlocksOnly);
                     TaskScheduler.getInstanceClient().scheduleTask(task, Configs.Generic.PASTE_COMMAND_INTERVAL.getIntegerValue());
-                    InfoUtils.showGuiOrActionBarMessage(MessageType.INFO, "litematica.message.scheduled_task_added");
+
+                    if (printMessage)
+                    {
+                        InfoUtils.showGuiOrActionBarMessage(MessageType.INFO, "litematica.message.scheduled_task_added");
+                    }
                 }
             }
             else
@@ -779,9 +816,9 @@ public class SchematicPlacementManager
     {
         private final SchematicPlacement placement;
         private final String subRegionName;
-        private final MutableBoundingBox bb;
+        private final IntBoundingBox bb;
 
-        public PlacementPart(SchematicPlacement placement, String subRegionName, MutableBoundingBox bb)
+        public PlacementPart(SchematicPlacement placement, String subRegionName, IntBoundingBox bb)
         {
             this.placement = placement;
             this.subRegionName = subRegionName;
@@ -798,7 +835,7 @@ public class SchematicPlacementManager
             return this.subRegionName;
         }
 
-        public MutableBoundingBox getBox()
+        public IntBoundingBox getBox()
         {
             return this.bb;
         }

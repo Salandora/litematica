@@ -8,13 +8,11 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
-
 import com.mojang.datafixers.DataFixer;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.materials.MaterialCache;
-import fi.dy.masa.litematica.mixin.IMixinKeyBinding;
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.litematica.schematic.SchematicaSchematic;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
@@ -26,13 +24,15 @@ import fi.dy.masa.litematica.util.PositionUtils.Corner;
 import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.litematica.world.WorldSchematic;
-import fi.dy.masa.malilib.gui.Message;
+import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.hotkeys.KeybindMulti;
 import fi.dy.masa.malilib.interfaces.IStringConsumer;
 import fi.dy.masa.malilib.util.FileUtils;
 import fi.dy.masa.malilib.util.InfoUtils;
+import fi.dy.masa.malilib.util.IntBoundingBox;
 import fi.dy.masa.malilib.util.LayerRange;
+import fi.dy.masa.malilib.util.StringUtils;
 import fi.dy.masa.malilib.util.SubChunkPos;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRedstoneComparator;
@@ -40,12 +40,8 @@ import net.minecraft.block.BlockRedstoneRepeater;
 import net.minecraft.block.BlockSlab;
 import net.minecraft.block.BlockStairs;
 import net.minecraft.block.BlockTrapDoor;
-import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Blocks;
@@ -61,7 +57,10 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.*;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.EnumDifficulty;
 import net.minecraft.world.GameType;
 import net.minecraft.world.World;
@@ -109,7 +108,7 @@ public class WorldUtils
         WorldSettings settings = new WorldSettings(0L, GameType.CREATIVE, false, false, WorldType.FLAT);
         WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
-        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, schematic.getSize());
+        loadChunksSchematicWorld(world, BlockPos.ORIGIN, schematic.getSize());
         PlacementSettings placementSettings = new PlacementSettings();
         placementSettings.setIgnoreEntities(ignoreEntities);
         schematic.placeSchematicDirectlyToChunks(world, BlockPos.ORIGIN, placementSettings);
@@ -160,7 +159,7 @@ public class WorldUtils
             WorldSettings settings = new WorldSettings(0L, GameType.CREATIVE, false, false, WorldType.FLAT);
             WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
-            loadChunksClientWorld(world, BlockPos.ORIGIN, template.getSize());
+            loadChunksSchematicWorld(world, BlockPos.ORIGIN, template.getSize());
 
             PlacementSettings placementSettings = new PlacementSettings();
             placementSettings.setIgnoreEntities(ignoreEntities);
@@ -200,6 +199,7 @@ public class WorldUtils
     {
         //SchematicaSchematic schematic = convertLitematicaSchematicToSchematicaSchematic(inputDir, inputFileName, ignoreEntities, feedback);
         //return schematic != null && schematic.writeToFile(outputDir, outputFileName, override, feedback);
+        // TODO 1.13
         return false;
     }
 
@@ -218,7 +218,7 @@ public class WorldUtils
         WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
         BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
-        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, size);
+        loadChunksSchematicWorld(world, BlockPos.ORIGIN, size);
         SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
         litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
 
@@ -254,7 +254,7 @@ public class WorldUtils
         WorldSchematic world = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.NORMAL, Minecraft.getInstance().profiler);
 
         BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
-        WorldUtils.loadChunksClientWorld(world, BlockPos.ORIGIN, size);
+        loadChunksSchematicWorld(world, BlockPos.ORIGIN, size);
         SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
         litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
 
@@ -281,13 +281,13 @@ public class WorldUtils
         {
             if (dir.exists() == false && dir.mkdirs() == false)
             {
-                feedback.setString(I18n.format("litematica.error.schematic_write_to_file_failed.directory_creation_failed", dir.getAbsolutePath()));
+                feedback.setString(StringUtils.translate("litematica.error.schematic_write_to_file_failed.directory_creation_failed", dir.getAbsolutePath()));
                 return false;
             }
 
             if (override == false && file.exists())
             {
-                feedback.setString(I18n.format("litematica.error.structure_write_to_file_failed.exists", file.getAbsolutePath()));
+                feedback.setString(StringUtils.translate("litematica.error.structure_write_to_file_failed.exists", file.getAbsolutePath()));
                 return false;
             }
 
@@ -300,7 +300,7 @@ public class WorldUtils
         }
         catch (Exception e)
         {
-            feedback.setString(I18n.format("litematica.error.structure_write_to_file_failed.exception", file.getAbsolutePath()));
+            feedback.setString(StringUtils.translate("litematica.error.structure_write_to_file_failed.exception", file.getAbsolutePath()));
         }
 
         return false;
@@ -310,14 +310,13 @@ public class WorldUtils
     {
         NBTTagCompound nbt = CompressedStreamTools.readCompressed(stream);
         Template template = new Template();
-        // FIXME 1.13
         //template.read(fixer.process(FixTypes.STRUCTURE, nbt));
         template.read(nbt);
 
         return template;
     }
 
-    public static void loadChunksClientWorld(WorldSchematic world, BlockPos origin, Vec3i areaSize)
+    public static void loadChunksSchematicWorld(WorldSchematic world, BlockPos origin, Vec3i areaSize)
     {
         BlockPos posEnd = origin.add(PositionUtils.getRelativeEndPositionFromAreaSize(areaSize));
         BlockPos posMin = PositionUtils.getMinCorner(origin, posEnd);
@@ -338,13 +337,13 @@ public class WorldUtils
 
     public static void setToolModeBlockState(ToolMode mode, boolean primary, Minecraft mc)
     {
-        RayTraceWrapper traceWrapper = RayTraceUtils.getGenericTrace(mc.world, mc.player, 6, true);
+        RayTraceResult trace = RayTraceUtils.getRayTraceFromEntity(mc.world, mc.player, true, 6);
         IBlockState state = Blocks.AIR.getDefaultState();
 
-        if (traceWrapper != null &&
-            traceWrapper.getRayTraceResult().type == RayTraceResult.Type.BLOCK)
+        if (trace != null &&
+            trace.type == RayTraceResult.Type.BLOCK)
         {
-            state = mc.world.getBlockState(traceWrapper.getRayTraceResult().getBlockPos());
+            state = mc.world.getBlockState(trace.getBlockPos());
         }
 
         if (primary)
@@ -393,7 +392,7 @@ public class WorldUtils
                     // The creative mode pick block with NBT only works correctly
                     // if the server world doesn't have a TileEntity in that position.
                     // Otherwise it would try to write whatever that TE is into the picked ItemStack.
-                    if (GuiScreen.isCtrlKeyDown() && te != null && mc.world.isAirBlock(pos))
+                    if (GuiBase.isCtrlDown() && te != null && mc.world.isAirBlock(pos))
                     {
                         ItemUtils.storeTEInStack(stack, te);
                     }
@@ -430,7 +429,7 @@ public class WorldUtils
             Configs.Generic.EASY_PLACE_HOLD_ENABLED.getBooleanValue() &&
             Configs.Generic.EASY_PLACE_MODE.getBooleanValue() &&
             Hotkeys.EASY_PLACE_ACTIVATION.getKeybind().isKeybindHeld() &&
-            KeybindMulti.isKeyDown(((IMixinKeyBinding)mc.gameSettings.keyBindUseItem).getInput().getKeyCode()))
+            KeybindMulti.isKeyDown(KeybindMulti.getKeyCode(mc.gameSettings.keyBindUseItem)))
         {
             WorldUtils.doEasyPlaceAction(mc);
         }
@@ -442,7 +441,7 @@ public class WorldUtils
 
         if (result == EnumActionResult.FAIL)
         {
-            InfoUtils.showGuiOrInGameMessage(Message.MessageType.WARNING, "litematica.message.easy_place_fail");
+            InfoUtils.showGuiOrInGameMessage(MessageType.WARNING, "litematica.message.easy_place_fail");
             return true;
         }
 
@@ -483,7 +482,7 @@ public class WorldUtils
                 }
 
                 // Abort if there is already a block in the target position
-                if (easyPlaceBlockChecksCancel(stateSchematic, stateClient, mc.player, trace, stack))
+                if (easyPlaceBlockChecksCancel(stateSchematic, stateClient, mc.player, traceVanilla, stack))
                 {
                     return EnumActionResult.FAIL;
                 }
@@ -511,7 +510,9 @@ public class WorldUtils
                 {
                     BlockPos posVanilla = traceVanilla.getBlockPos();
                     IBlockState stateVanilla = mc.world.getBlockState(posVanilla);
-                    BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, posVanilla, sideOrig, (float)hitPos.x, (float)hitPos.y, (float)hitPos.z));
+                    Vec3d hit = trace.hitVec;
+                    BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player,
+                            stack, posVanilla, traceVanilla.sideHit, (float) hit.x, (float) hit.y, (float) hit.z));
 
                     if (stateVanilla.isReplaceable(ctx) == false)
                     {
@@ -532,14 +533,6 @@ public class WorldUtils
 
                 // Mark that this position has been handled (use the non-offset position that is checked above)
                 cacheEasyPlacePosition(pos);
-
-                // Fluid _blocks_ are not replaceable... >_>
-                BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, trace.getBlockPos(), trace.sideHit, (float) hitPos.x, (float) hitPos.y, (float) hitPos.z));
-                if (stateClient.isReplaceable(ctx) == false &&
-                    stateClient.getMaterial().isLiquid())
-                {
-                    pos = pos.offset(side, -1);
-                }
 
                 //System.out.printf("pos: %s side: %s, hit: %s\n", pos, side, hitPos);
                 mc.playerController.processRightClickBlock(mc.player, mc.world, pos, side, hitPos, hand);
@@ -567,7 +560,7 @@ public class WorldUtils
     }
 
     private static boolean easyPlaceBlockChecksCancel(IBlockState stateSchematic, IBlockState stateClient,
-                                                      EntityPlayer player, RayTraceResult trace, ItemStack stack)
+            EntityPlayer player, RayTraceResult trace, ItemStack stack)
     {
         Block blockSchematic = stateSchematic.getBlock();
 
@@ -582,7 +575,8 @@ public class WorldUtils
         }
 
         Vec3d hit = trace.hitVec;
-        BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(player, stack, trace.getBlockPos(), trace.sideHit, (float) hit.x, (float) hit.y, (float) hit.z));
+        BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(player, stack,
+                trace.getBlockPos(), trace.sideHit, (float) hit.x, (float) hit.y, (float) hit.z));
 
         if (stateClient.isReplaceable(ctx) == false)
         {
@@ -675,8 +669,8 @@ public class WorldUtils
      * in the schematic, or the player is holding the wrong item in hand, then true is returned
      * to indicate that the use action should be cancelled.
      * @param mc
-     * //@param doEasyPlace
-     * //@param restrictPlacement
+     * @param doEasyPlace
+     * @param restrictPlacement
      * @return
      */
     public static boolean handlePlacementRestriction(Minecraft mc)
@@ -685,7 +679,7 @@ public class WorldUtils
 
         if (cancel)
         {
-            InfoUtils.showGuiOrInGameMessage(Message.MessageType.WARNING, "litematica.message.placement_restriction_fail");
+            InfoUtils.showGuiOrInGameMessage(MessageType.WARNING, "litematica.message.placement_restriction_fail");
         }
 
         return cancel;
@@ -697,53 +691,64 @@ public class WorldUtils
      * in the schematic, or the player is holding the wrong item in hand, then true is returned
      * to indicate that the use action should be cancelled.
      * @param mc
-     * //@param doEasyPlace
-     * //@param restrictPlacement
+     * @param doEasyPlace
+     * @param restrictPlacement
      * @return true if the use action should be cancelled
      */
     private static boolean placementRestrictionInEffect(Minecraft mc)
     {
         RayTraceResult trace = mc.objectMouseOver;
 
+        ItemStack stack = mc.player.getHeldItemMainhand();
+
+        if (stack.isEmpty())
+        {
+            stack = mc.player.getHeldItemOffhand();
+        }
+
+        if (stack.isEmpty())
+        {
+            return false;
+        }
+
         if (trace != null && trace.type == RayTraceResult.Type.BLOCK)
         {
             BlockPos pos = trace.getBlockPos();
-            Vec3d hitIn = trace.hitVec;
+            Vec3d hit = trace.hitVec;
+            BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, pos, trace.sideHit, (float) hit.x, (float) hit.y, (float) hit.z));
+
+            // Get the possibly offset position, if the targeted block is not replaceable
+            pos = ctx.getPos();
+
             IBlockState stateClient = mc.world.getBlockState(pos);
-
-            BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, new ItemStack(stateClient.getBlock()), pos, trace.sideHit, (float)hitIn.x, (float)hitIn.y, (float)hitIn.z));
-            if (stateClient.isReplaceable(ctx) == false)
-            {
-                pos = pos.offset(trace.sideHit);
-                stateClient = mc.world.getBlockState(pos);
-                ctx = new BlockItemUseContext(new ItemUseContext(mc.player, new ItemStack(stateClient.getBlock()), pos, trace.sideHit, (float)hitIn.x, (float)hitIn.y, (float)hitIn.z));
-            }
-
-            // Placement position is already occupied
-            if (stateClient.isReplaceable(ctx) == false &&
-                stateClient.getMaterial().isLiquid() == false)
-            {
-                return true;
-            }
 
             World worldSchematic = SchematicWorldHandler.getSchematicWorld();
             LayerRange range = DataManager.getRenderLayerRange();
+            boolean schematicHasAir = worldSchematic.isAirBlock(pos);
 
             // The targeted position is outside the current render range
-            if (worldSchematic.isAirBlock(pos) == false && range.isPositionWithinRange(pos) == false)
+            if (schematicHasAir == false && range.isPositionWithinRange(pos) == false)
             {
                 return true;
             }
 
             // There should not be anything in the targeted position,
             // and the position is within or close to a schematic sub-region
-            if (worldSchematic.isAirBlock(pos) && isPositionWithinRangeOfSchematicRegions(pos, 2))
+            if (schematicHasAir && isPositionWithinRangeOfSchematicRegions(pos, 2))
+            {
+                return true;
+            }
+
+            ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, pos, trace.sideHit, (float) hit.x, (float) hit.y, (float) hit.z));
+
+            // Placement position is already occupied
+            if (stateClient.isReplaceable(ctx) == false)
             {
                 return true;
             }
 
             IBlockState stateSchematic = worldSchematic.getBlockState(pos);
-            ItemStack stack = MaterialCache.getInstance().getItemForState(stateSchematic);
+            stack = MaterialCache.getInstance().getItemForState(stateSchematic);
 
             // The player is holding the wrong item for the targeted position
             if (stack.isEmpty() == false && EntityUtils.getUsedHandForItem(mc.player, stack) == null)
@@ -774,11 +779,11 @@ public class WorldUtils
             {
                 for (int cx = minCX; cx <= maxCX; ++cx)
                 {
-                    List<MutableBoundingBox> boxes = manager.getTouchedBoxesInSubChunk(new SubChunkPos(cx, cy, cz));
+                    List<IntBoundingBox> boxes = manager.getTouchedBoxesInSubChunk(new SubChunkPos(cx, cy, cz));
 
                     for (int i = 0; i < boxes.size(); ++i)
                     {
-                        MutableBoundingBox box = boxes.get(i);
+                        IntBoundingBox box = boxes.get(i);
 
                         if (x >= box.minX - range && x <= box.maxX + range &&
                             y >= box.minY - range && y <= box.maxY + range &&
@@ -827,7 +832,7 @@ public class WorldUtils
                     {
                         for (int y = y1; y <= yMax; ++y)
                         {
-                            if (chunk.getBlockState(x, y, z).getMaterial() != Material.AIR)
+                            if (chunk.getBlockState(x, y, z).isAir() == false)
                             {
                                 return false;
                             }
@@ -870,7 +875,7 @@ public class WorldUtils
                         {
                             for (int x = xMin; x <= xMax; ++x)
                             {
-                                if (chunk.getBlockState(x, y, z).getMaterial() != Material.AIR)
+                                if (chunk.getBlockState(x, y, z).isAir() == false)
                                 {
                                     return false;
                                 }
@@ -903,7 +908,7 @@ public class WorldUtils
                     {
                         for (int y = y1; y <= yMax; ++y)
                         {
-                            if (chunk.getBlockState(x, y, z).getMaterial() != Material.AIR)
+                            if (chunk.getBlockState(x, y, z).isAir() == false)
                             {
                                 return false;
                             }

@@ -4,8 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
 import fi.dy.masa.litematica.data.DataManager;
+import fi.dy.masa.litematica.data.SchematicHolder;
 import fi.dy.masa.litematica.gui.GuiSchematicSave;
 import fi.dy.masa.litematica.gui.GuiSchematicSave.InMemorySchematicCreator;
+import fi.dy.masa.litematica.scheduler.TaskScheduler;
+import fi.dy.masa.litematica.scheduler.tasks.TaskBase;
+import fi.dy.masa.litematica.scheduler.tasks.TaskDeleteArea;
+import fi.dy.masa.litematica.scheduler.tasks.TaskPasteSchematicDirect;
+import fi.dy.masa.litematica.scheduler.tasks.TaskPasteSchematicSetblock;
+import fi.dy.masa.litematica.scheduler.tasks.TaskSaveSchematic;
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.litematica.schematic.container.LitematicaBlockStateContainer;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
@@ -16,18 +23,21 @@ import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement.RequiredEnab
 import fi.dy.masa.litematica.schematic.projects.SchematicProject;
 import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.SelectionManager;
+import fi.dy.masa.litematica.tool.ToolMode;
 import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
 import fi.dy.masa.litematica.world.WorldSchematic;
+import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.GuiTextInput;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.interfaces.IStringConsumerFeedback;
+import fi.dy.masa.malilib.util.GuiUtils;
 import fi.dy.masa.malilib.util.InfoUtils;
 import fi.dy.masa.malilib.util.LayerRange;
 import fi.dy.masa.malilib.util.SubChunkPos;
-import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.item.ItemBlock;
@@ -42,9 +52,12 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
+import net.minecraft.world.World;
 
 public class SchematicUtils
 {
+    private static long areaMovedTime;
+
     public static boolean saveSchematic(boolean inMemoryOnly)
     {
         SelectionManager sm = DataManager.getSelectionManager();
@@ -52,32 +65,44 @@ public class SchematicUtils
 
         if (area != null)
         {
-            Minecraft mc = Minecraft.getInstance();
-
             if (DataManager.getSchematicProjectsManager().hasProjectOpen())
             {
                 String title = "litematica.gui.title.schematic_projects.save_new_version";
                 SchematicProject project = DataManager.getSchematicProjectsManager().getCurrentProject();
-                GuiTextInput gui = new GuiTextInput(512, title, project.getCurrentVersionName(), mc.currentScreen, new SchematicVersionCreator());
-                mc.displayGuiScreen(gui);
+                GuiTextInput gui = new GuiTextInput(512, title, project.getCurrentVersionName(), GuiUtils.getCurrentScreen(), new SchematicVersionCreator());
+                GuiBase.openGui(gui);
             }
             else if (inMemoryOnly)
             {
                 String title = "litematica.gui.title.create_in_memory_schematic";
-                GuiTextInput gui = new GuiTextInput(512, title, area.getName(), mc.currentScreen, new InMemorySchematicCreator(area));
-                mc.displayGuiScreen(gui);
+                GuiTextInput gui = new GuiTextInput(512, title, area.getName(), GuiUtils.getCurrentScreen(), new InMemorySchematicCreator(area));
+                GuiBase.openGui(gui);
             }
             else
             {
                 GuiSchematicSave gui = new GuiSchematicSave();
-                gui.setParent(mc.currentScreen);
-                mc.displayGuiScreen(gui);
+                gui.setParent(GuiUtils.getCurrentScreen());
+                GuiBase.openGui(gui);
             }
 
             return true;
         }
 
         return false;
+    }
+
+    public static void unloadCurrentlySelectedSchematic()
+    {
+        SchematicPlacement placement = DataManager.getSchematicPlacementManager().getSelectedSchematicPlacement();
+
+        if (placement != null)
+        {
+            SchematicHolder.getInstance().removeSchematic(placement.getSchematic());
+        }
+        else
+        {
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_placement_selected");
+        }
     }
 
     public static boolean breakSchematicBlock(Minecraft mc)
@@ -192,7 +217,7 @@ public class SchematicUtils
             EnumFacing direction = fi.dy.masa.malilib.util.PositionUtils.getTargetedDirection(info.side, playerFacingH, info.pos, info.hitVec);
             BlockPos posStart = info.pos.offset(info.side); // offset to the adjacent air block
 
-            if (SchematicWorldHandler.getSchematicWorld().getBlockState(posStart).getMaterial() == Material.AIR)
+            if (SchematicWorldHandler.getSchematicWorld().getBlockState(posStart).isAir())
             {
                 BlockPos posEnd = getReplacementBoxEndPos(posStart, direction);
                 return setSchematicBlockStates(posStart, posEnd, info.stateNew);
@@ -211,7 +236,7 @@ public class SchematicUtils
         {
             BlockPos posStart = info.pos.offset(info.side); // offset to the adjacent air block
 
-            if (SchematicWorldHandler.getSchematicWorld().getBlockState(posStart).getMaterial() == Material.AIR)
+            if (SchematicWorldHandler.getSchematicWorld().getBlockState(posStart).isAir())
             {
                 return setAllIdenticalSchematicBlockStates(posStart, Blocks.AIR.getDefaultState(), info.stateNew);
             }
@@ -225,31 +250,34 @@ public class SchematicUtils
     {
         ItemStack stack = mc.player.getHeldItemMainhand();
 
-        if (stack.isEmpty() == false && (stack.getItem() instanceof ItemBlock /*|| stack.getItem() instanceof ItemBlock*/))
+        if (stack.isEmpty() == false && (stack.getItem() instanceof ItemBlock))
         {
-            WorldSchematic world = SchematicWorldHandler.getSchematicWorld();
+            WorldSchematic worldSchematic = SchematicWorldHandler.getSchematicWorld();
             RayTraceWrapper traceWrapper = RayTraceUtils.getGenericTrace(mc.world, mc.player, 10, true);
 
-            if (world != null && traceWrapper != null &&
+            if (worldSchematic != null && traceWrapper != null &&
                 traceWrapper.getHitType() == RayTraceWrapper.HitType.SCHEMATIC_BLOCK)
             {
                 RayTraceResult trace = traceWrapper.getRayTraceResult();
                 EnumFacing side = trace.sideHit;
                 Vec3d hitVec = trace.hitVec;
                 BlockPos pos = trace.getBlockPos();
-                IBlockState stateOriginal = world.getBlockState(pos);
+                IBlockState stateOriginal = worldSchematic.getBlockState(pos);
                 IBlockState stateNew = Blocks.AIR.getDefaultState();
 
-                BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack, pos, side, (float) hitVec.x, (float) hitVec.y, (float) hitVec.z));
                 if (stack.getItem() instanceof ItemBlock)
                 {
-                    stateNew = ((ItemBlock)stack.getItem()).getBlock().getStateForPlacement(ctx);
+                    // Smuggle in a reference to the Schematic world to the use context
+                    World worldClient = mc.player.world;
+                    mc.player.world = worldSchematic;
+
+                    BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack,
+                            pos.offset(side), side, (float) hitVec.x, (float) hitVec.y, (float) hitVec.z));
+
+                    mc.player.world = worldClient;
+
+                    stateNew = ((ItemBlock) stack.getItem()).getBlock().getStateForPlacement(ctx);
                 }
-                /*else if (stack.getItem() instanceof ItemBlockSpecial)
-                {
-                    stateNew = ((IMixinItemBlockSpecial) stack.getItem()).getBlock().getStateForPlacement(world, pos.offset(side),
-                                    side, (float) hitVec.x, (float) hitVec.y, (float) hitVec.z, 0, mc.player);
-                }*/
 
                 return new ReplacementInfo(pos, side, hitVec, stateOriginal, stateNew);
             }
@@ -275,7 +303,7 @@ public class SchematicUtils
             posMutable.move(direction);
 
             if (range.isPositionWithinRange(posMutable) == false ||
-                world.isChunkLoaded(posMutable.getX() >> 4, posMutable.getZ() >> 4, false) == false ||
+                world.getChunkProvider().isChunkLoaded(posMutable.getX() >> 4, posMutable.getZ() >> 4) == false ||
                 world.getBlockState(posMutable) != stateStart)
             {
                 posMutable.move(direction.getOpposite());
@@ -312,7 +340,7 @@ public class SchematicUtils
             {
                 for (PlacementPart part : list)
                 {
-                    if (part.getBox().isVecInside(pos))
+                    if (part.getBox().containsPos(pos))
                     {
                         SchematicPlacement placement = part.getPlacement();
                         String regionName = part.getSubRegionName();
@@ -329,13 +357,13 @@ public class SchematicUtils
                             int totalBlocks = part.getPlacement().getSchematic().getMetadata().getTotalBlocks();
                             int increment = 0;
 
-                            if (stateOriginal.getBlock() != Blocks.AIR)
+                            if (stateOriginal.isAir() == false)
                             {
-                                increment = state.getBlock() != Blocks.AIR ? 0 : -1;
+                                increment = state.isAir() == false ? 0 : -1;
                             }
                             else
                             {
-                                increment = state.getBlock() != Blocks.AIR ? 1 : 0;
+                                increment = state.isAir() == false ? 1 : 0;
                             }
 
                             totalBlocks += increment;
@@ -367,7 +395,7 @@ public class SchematicUtils
             {
                 for (PlacementPart part : list)
                 {
-                    if (part.getBox().isVecInside(posStart))
+                    if (part.getBox().containsPos(posStart))
                     {
                         SchematicPlacement placement = part.getPlacement();
                         String regionName = part.getSubRegionName();
@@ -400,13 +428,13 @@ public class SchematicUtils
                                     {
                                         IBlockState stateOriginal = container.get(x, y, z);
 
-                                        if (stateOriginal.getBlock() != Blocks.AIR)
+                                        if (stateOriginal.isAir() == false)
                                         {
-                                            increment = state.getBlock() != Blocks.AIR ? 0 : -1;
+                                            increment = state.isAir() == false ? 0 : -1;
                                         }
                                         else
                                         {
-                                            increment = state.getBlock() != Blocks.AIR ? 1 : 0;
+                                            increment = state.isAir() == false ? 1 : 0;
                                         }
 
                                         totalBlocks += increment;
@@ -443,7 +471,7 @@ public class SchematicUtils
             {
                 for (PlacementPart part : list)
                 {
-                    if (part.getBox().isVecInside(posStart))
+                    if (part.getBox().containsPos(posStart))
                     {
                         if (replaceAllIdenticalBlocks(manager, part, stateOriginal, stateNew))
                         {
@@ -489,13 +517,13 @@ public class SchematicUtils
         int totalBlocks = schematicPlacement.getSchematic().getMetadata().getTotalBlocks();
         int increment = 0;
 
-        if (stateOriginalIn.getBlock() != Blocks.AIR)
+        if (stateOriginalIn.isAir() == false)
         {
-            increment = stateNewIn.getBlock() != Blocks.AIR ? 0 : -1;
+            increment = stateNewIn.isAir() == false ? 0 : -1;
         }
         else
         {
-            increment = stateNewIn.getBlock() != Blocks.AIR ? 1 : 0;
+            increment = stateNewIn.isAir() == false ? 1 : 0;
         }
 
         for (String regionName : regions)
@@ -577,6 +605,140 @@ public class SchematicUtils
         schematicPlacement.getSchematic().getMetadata().setTotalBlocks(totalBlocks);
 
         return true;
+    }
+
+    public static void moveCurrentlySelectedWorldRegionToLookingDirection(int amount, EntityPlayer player, Minecraft mc)
+    {
+        SelectionManager sm = DataManager.getSelectionManager();
+        AreaSelection area = sm.getCurrentSelection();
+
+        if (area != null && area.getAllSubRegionBoxes().size() > 0)
+        {
+            BlockPos pos = area.getEffectiveOrigin().offset(EntityUtils.getClosestLookingDirection(player), amount);
+            moveCurrentlySelectedWorldRegionTo(pos, mc);
+        }
+    }
+
+    public static void moveCurrentlySelectedWorldRegionTo(BlockPos pos, Minecraft mc)
+    {
+        if (mc.player == null || mc.player.abilities.isCreativeMode == false)
+        {
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.error.generic.creative_mode_only");
+            return;
+        }
+
+        TaskScheduler scheduler = TaskScheduler.getServerInstanceIfExistsOrClient();
+        long currentTime = System.currentTimeMillis();
+
+        // Add a delay from the previous move operation, to allow time for
+        // server -> client chunk/block syncing, otherwise a subsequent move
+        // might wipe the area before the new blocks have arrived on the
+        // client and thus the new move schematic would just be air.
+        if ((currentTime - areaMovedTime) < 400 ||
+            scheduler.hasTask(TaskSaveSchematic.class) ||
+            scheduler.hasTask(TaskDeleteArea.class) ||
+            scheduler.hasTask(TaskPasteSchematicSetblock.class) ||
+            scheduler.hasTask(TaskPasteSchematicDirect.class))
+        {
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.move.pending_tasks");
+            return;
+        }
+
+        SelectionManager sm = DataManager.getSelectionManager();
+        AreaSelection area = sm.getCurrentSelection();
+
+        if (area != null && area.getAllSubRegionBoxes().size() > 0)
+        {
+            LitematicaSchematic schematic = LitematicaSchematic.createEmptySchematic(area, "");
+            TaskSaveSchematic taskSave = new TaskSaveSchematic(schematic, area, true);
+            taskSave.disableCompletionMessage();
+            areaMovedTime = System.currentTimeMillis();
+
+            taskSave.setCompletionListener(() ->
+            {
+                SchematicPlacement placement = SchematicPlacement.createFor(schematic, pos, "-", true, true);
+                DataManager.getSchematicPlacementManager().addSchematicPlacement(placement, false);
+
+                TaskDeleteArea taskDelete = new TaskDeleteArea(area.getAllSubRegionBoxes(), true);
+                taskDelete.disableCompletionMessage();
+                areaMovedTime = System.currentTimeMillis();
+
+                taskDelete.setCompletionListener(() ->
+                {
+                    TaskBase taskPaste;
+
+                    if (mc.isSingleplayer())
+                    {
+                        taskPaste = new TaskPasteSchematicDirect(placement);
+                    }
+                    else
+                    {
+                        taskPaste = new TaskPasteSchematicSetblock(placement, false);
+                    }
+
+                    taskPaste.disableCompletionMessage();
+                    areaMovedTime = System.currentTimeMillis();
+
+                    taskPaste.setCompletionListener(() ->
+                    {
+                        SchematicHolder.getInstance().removeSchematic(schematic);
+                        area.moveEntireSelectionTo(pos, false);
+                        areaMovedTime = System.currentTimeMillis();
+                    });
+
+                    scheduler.scheduleTask(taskPaste, 1);
+                });
+
+                scheduler.scheduleTask(taskDelete, 1);
+            });
+
+            scheduler.scheduleTask(taskSave, 1);
+        }
+        else
+        {
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_area_selected");
+        }
+    }
+
+    public static void cloneSelectionArea(Minecraft mc)
+    {
+        SelectionManager sm = DataManager.getSelectionManager();
+        AreaSelection area = sm.getCurrentSelection();
+
+        if (area != null && area.getAllSubRegionBoxes().size() > 0)
+        {
+            LitematicaSchematic schematic = LitematicaSchematic.createEmptySchematic(area, mc.player.getName().getString());
+            TaskSaveSchematic taskSave = new TaskSaveSchematic(schematic, area, true);
+            taskSave.disableCompletionMessage();
+
+            taskSave.setCompletionListener(() ->
+            {
+                SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
+                String name = schematic.getMetadata().getName();
+                BlockPos origin = RayTraceUtils.getTargetedPosition(mc.world, mc.player, 6, false);
+
+                if (origin == null)
+                {
+                    origin = new BlockPos(mc.player);
+                }
+
+                SchematicPlacement placement = SchematicPlacement.createFor(schematic, origin, name, true, true);
+
+                manager.addSchematicPlacement(placement, false);
+                manager.setSelectedSchematicPlacement(placement);
+
+                if (mc.player.abilities.isCreativeMode)
+                {
+                    DataManager.setToolMode(ToolMode.PASTE_SCHEMATIC);
+                }
+            });
+
+            TaskScheduler.getServerInstanceIfExistsOrClient().scheduleTask(taskSave, 10);
+        }
+        else
+        {
+            InfoUtils.showGuiOrInGameMessage(MessageType.ERROR, "litematica.message.error.no_area_selected");
+        }
     }
 
     @Nullable

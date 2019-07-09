@@ -2,8 +2,8 @@ package fi.dy.masa.litematica.tool;
 
 import javax.annotation.Nullable;
 import fi.dy.masa.litematica.data.DataManager;
+import fi.dy.masa.malilib.util.StringUtils;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
 
 public enum ToolMode
@@ -14,6 +14,7 @@ public enum ToolMode
     REPLACE_BLOCK       ("litematica.tool_mode.name.replace_block",         true, false, true, true),
     PASTE_SCHEMATIC     ("litematica.tool_mode.name.paste_schematic",       true, true),
     GRID_PASTE          ("litematica.tool_mode.name.grid_paste",            true, true),
+    MOVE                ("litematica.tool_mode.name.move",                  true, false),
     DELETE              ("litematica.tool_mode.name.delete",                true, false),
     REBUILD             ("litematica.tool_mode.name.rebuild",               false, true);
 
@@ -89,7 +90,7 @@ public enum ToolMode
 
     public String getName()
     {
-        return I18n.format(this.unlocName);
+        return StringUtils.translate(this.unlocName);
     }
 
     public ToolMode cycle(EntityPlayer player, boolean forward)

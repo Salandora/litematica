@@ -10,8 +10,9 @@ import fi.dy.masa.malilib.gui.LeftRight;
 import fi.dy.masa.malilib.render.InventoryOverlay.InventoryProperties;
 import fi.dy.masa.malilib.render.InventoryOverlay.InventoryRenderType;
 import fi.dy.masa.malilib.util.Color4f;
+import fi.dy.masa.malilib.util.GuiUtils;
+import fi.dy.masa.malilib.util.StringUtils;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.MainWindow;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
@@ -32,13 +33,13 @@ public class RenderUtils
 {
     private static final Random RAND = new Random();
 
-    public static int getMaxStringRenderLength(List<String> list, Minecraft mc)
+    public static int getMaxStringRenderLength(List<String> list)
     {
         int length = 0;
 
         for (String str : list)
         {
-            length = Math.max(length, mc.fontRenderer.getStringWidth(str));
+            length = Math.max(length, StringUtils.getStringWidth(str));
         }
 
         return length;
@@ -612,19 +613,17 @@ public class RenderUtils
     public static int renderInventoryOverlay(BlockInfoAlignment align, LeftRight side, int offY,
             IInventory inv, InventoryRenderType type, InventoryProperties props, Minecraft mc)
     {
-        MainWindow res = mc.mainWindow;
-
         int xInv = 0;
         int yInv = 0;
 
         switch (align)
         {
             case CENTER:
-                xInv = res.getScaledWidth() / 2 - (props.width / 2);
-                yInv = res.getScaledHeight() / 2 - props.height - offY;
+                xInv = GuiUtils.getScaledWindowWidth() / 2 - (props.width / 2);
+                yInv = GuiUtils.getScaledWindowHeight() / 2 - props.height - offY;
                 break;
             case TOP_CENTER:
-                xInv = res.getScaledWidth() / 2 - (props.width / 2);
+                xInv = GuiUtils.getScaledWindowWidth() / 2 - (props.width / 2);
                 yInv = offY;
                 break;
         }
@@ -632,7 +631,7 @@ public class RenderUtils
         if      (side == LeftRight.LEFT)  { xInv -= (props.width / 2 + 4); }
         else if (side == LeftRight.RIGHT) { xInv += (props.width / 2 + 4); }
 
-            GlStateManager.color4f(1f, 1f, 1f, 1f);
+        fi.dy.masa.malilib.render.RenderUtils.color(1f, 1f, 1f, 1f);
 
         fi.dy.masa.malilib.render.InventoryOverlay.renderInventoryBackground(type, xInv, yInv, props.slotsPerRow, props.totalSlots, mc);
         fi.dy.masa.malilib.render.InventoryOverlay.renderInventoryStacks(type, inv, xInv + props.slotOffsetX, yInv + props.slotOffsetY, props.slotsPerRow, 0, -1, mc);
@@ -683,7 +682,7 @@ public class RenderUtils
     /*
     private static void renderModel(final IBlockState state, final IBakedModel model, final BlockPos pos, final int alpha)
     {
-        //BlockRendererDispatcher dispatcher = Minecraft.getInstance().getBlockRendererDispatcher();
+        //BlockRendererDispatcher dispatcher = Minecraft.getMinecraft().getBlockRendererDispatcher();
         //dispatcher.getBlockModelRenderer().renderModelBrightnessColor(model, 1f, 1f, 1f, 1f);
 
         final Tessellator tessellator = Tessellator.getInstance();
@@ -720,7 +719,7 @@ public class RenderUtils
 
     private static int getTint(final IBlockState state, final BlockPos pos, final int alpha, final int tintIndex)
     {
-        Minecraft mc = Minecraft.getInstance();
+        Minecraft mc = Minecraft.getMinecraft();
         return alpha | mc.getBlockColors().colorMultiplier(state, null, pos, tintIndex);
     }
 

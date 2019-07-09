@@ -1,18 +1,16 @@
 package fi.dy.masa.litematica.render;
 
 import javax.annotation.Nullable;
-
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.render.schematic.WorldRendererSchematic;
+import fi.dy.masa.litematica.world.WorldSchematic;
 import fi.dy.masa.malilib.render.shader.ShaderProgram;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -67,7 +65,7 @@ public class LitematicaRenderer
         this.getWorldRenderer().loadRenderers();
     }
 
-    public void onSchematicWorldChanged(@Nullable WorldClient worldClient)
+    public void onSchematicWorldChanged(@Nullable WorldSchematic worldClient)
     {
         this.getWorldRenderer().setWorldAndLoadRenderers(worldClient);
     }
@@ -122,19 +120,18 @@ public class LitematicaRenderer
 
         this.mc.profiler.endStartSection("prepare_terrain");
         this.mc.getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
-        RenderHelper.disableStandardItemLighting();
-        WorldRendererSchematic renderGlobal = this.getWorldRenderer();
+        fi.dy.masa.malilib.render.RenderUtils.disableItemLighting();
+        WorldRendererSchematic worldRenderer = this.getWorldRenderer();
 
         this.mc.profiler.endStartSection("terrain_setup");
-        renderGlobal.setupTerrain(entity, partialTicks, icamera, this.frameCount++, this.mc.player.isSpectator());
+        worldRenderer.setupTerrain(entity, partialTicks, icamera, this.frameCount++, this.mc.player.isSpectator());
 
         this.mc.profiler.endStartSection("update_chunks");
-        renderGlobal.updateChunks(finishTimeNano);
+        worldRenderer.updateChunks(finishTimeNano);
 
         this.mc.profiler.endStartSection("terrain");
         GlStateManager.matrixMode(GL11.GL_MODELVIEW);
         GlStateManager.disableAlphaTest();
-        GlStateManager.enableBlend();
 
         if (Configs.Visuals.ENABLE_SCHEMATIC_BLOCKS.getBooleanValue())
         {
@@ -148,13 +145,14 @@ public class LitematicaRenderer
 
             this.startShaderIfEnabled();
 
-            GlStateManager.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-            renderGlobal.renderBlockLayer(BlockRenderLayer.SOLID, partialTicks, entity);
+            fi.dy.masa.malilib.render.RenderUtils.setupBlend();
 
-            renderGlobal.renderBlockLayer(BlockRenderLayer.CUTOUT_MIPPED, partialTicks, entity);
+            worldRenderer.renderBlockLayer(BlockRenderLayer.SOLID, partialTicks, entity);
+
+            worldRenderer.renderBlockLayer(BlockRenderLayer.CUTOUT_MIPPED, partialTicks, entity);
 
             this.mc.getTextureManager().getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).setBlurMipmap(false, false);
-            renderGlobal.renderBlockLayer(BlockRenderLayer.CUTOUT, partialTicks, entity);
+            worldRenderer.renderBlockLayer(BlockRenderLayer.CUTOUT, partialTicks, entity);
             this.mc.getTextureManager().getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).restoreLastBlurMipmap();
 
             if (Configs.Visuals.RENDER_COLLIDING_SCHEMATIC_BLOCKS.getBooleanValue())
@@ -173,15 +171,15 @@ public class LitematicaRenderer
             this.mc.profiler.endStartSection("entities");
 
             GlStateManager.pushMatrix();
-            RenderHelper.enableStandardItemLighting();
-            GlStateManager.enableBlend();
-            GlStateManager.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+
+            fi.dy.masa.malilib.render.RenderUtils.enableItemLighting();
+            fi.dy.masa.malilib.render.RenderUtils.setupBlend();
 
             worldRenderer.renderEntities(entity, icamera, partialTicks);
 
             GlStateManager.disableFog(); // Fixes Structure Blocks breaking all rendering
             GlStateManager.disableBlend();
-            RenderHelper.disableStandardItemLighting();
+            fi.dy.masa.malilib.render.RenderUtils.disableItemLighting();
 
             GlStateManager.matrixMode(GL11.GL_MODELVIEW);
             GlStateManager.popMatrix();
@@ -195,10 +193,10 @@ public class LitematicaRenderer
             GlStateManager.depthMask(false);
 
             GlStateManager.pushMatrix();
-            GlStateManager.enableBlend();
-            GlStateManager.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
 
-            renderGlobal.renderBlockLayer(BlockRenderLayer.TRANSLUCENT, partialTicks, entity);
+            fi.dy.masa.malilib.render.RenderUtils.setupBlend();
+
+            worldRenderer.renderBlockLayer(BlockRenderLayer.TRANSLUCENT, partialTicks, entity);
 
             GlStateManager.popMatrix();
 
@@ -232,10 +230,9 @@ public class LitematicaRenderer
             GlStateManager.alphaFunc(GL11.GL_GREATER, 0.001F);
             GlStateManager.enablePolygonOffset();
             GlStateManager.polygonOffset(-0.4f, -0.8f);
-            GlStateManager.enableBlend();
-            GlStateManager.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
             GlStateManager.lineWidth(lineWidth);
-            GlStateManager.color4f(1f, 1f, 1f, 1f);
+            fi.dy.masa.malilib.render.RenderUtils.setupBlend();
+            fi.dy.masa.malilib.render.RenderUtils.color(1f, 1f, 1f, 1f);
             OpenGlHelper.glMultiTexCoord2f(OpenGlHelper.GL_TEXTURE1, 240, 240);
 
             if (renderThrough)
@@ -293,13 +290,13 @@ public class LitematicaRenderer
             ICamera icamera = this.createCamera(entity, partialTicks);
 
             this.calculateFinishTime();
-            WorldRendererSchematic renderGlobal = this.getWorldRenderer();
+            WorldRendererSchematic worldRenderer = this.getWorldRenderer();
 
             this.mc.profiler.endStartSection("litematica_terrain_setup");
-            renderGlobal.setupTerrain(entity, partialTicks, icamera, this.frameCount++, this.mc.player.isSpectator());
+            worldRenderer.setupTerrain(entity, partialTicks, icamera, this.frameCount++, this.mc.player.isSpectator());
 
             this.mc.profiler.endStartSection("litematica_update_chunks");
-            renderGlobal.updateChunks(this.finishTimeNano);
+            worldRenderer.updateChunks(this.finishTimeNano);
 
             this.mc.profiler.endSection();
 
@@ -439,8 +436,7 @@ public class LitematicaRenderer
         {
             this.mc.profiler.startSection("litematica_entities");
 
-            GlStateManager.enableBlend();
-            GlStateManager.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            fi.dy.masa.malilib.render.RenderUtils.setupBlend();
 
             this.startShaderIfEnabled();
 

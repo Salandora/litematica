@@ -1,16 +1,16 @@
 package fi.dy.masa.litematica.mixin;
 
-import fi.dy.masa.litematica.config.Configs;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.At.Shift;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.render.LitematicaRenderer;
 import net.minecraft.client.renderer.GameRenderer;
 
 @Mixin(GameRenderer.class)
-public abstract class MixinGameRenderer
+public class MixinGameRenderer
 {
     private boolean renderCollidingSchematicBlocks;
 
@@ -24,7 +24,7 @@ public abstract class MixinGameRenderer
 
     @Inject(method = "updateCameraAndRender(FJ)V", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/WorldRenderer;renderBlockLayer(" +
-                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I",ordinal = 0, shift = Shift.AFTER))
+                     "Lnet/minecraft/util/BlockRenderLayer;DLnet/minecraft/entity/Entity;)I", ordinal = 0, shift = Shift.AFTER))
     private void renderSolid(float partialTicks, long finishTimeNano, CallbackInfo ci)
     {
         LitematicaRenderer.getInstance().piecewiseRenderSolid(this.renderCollidingSchematicBlocks, partialTicks);

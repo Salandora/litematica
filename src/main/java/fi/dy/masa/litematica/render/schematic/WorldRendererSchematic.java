@@ -14,18 +14,19 @@ import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.mixin.IMixinBlockRendererDispatcher;
 import fi.dy.masa.litematica.mixin.IMixinViewFrustum;
 import fi.dy.masa.litematica.render.schematic.RenderChunkSchematicVbo.OverlayRenderType;
+import fi.dy.masa.litematica.world.ChunkSchematic;
+import fi.dy.masa.litematica.world.WorldSchematic;
+import fi.dy.masa.malilib.render.RenderUtils;
 import fi.dy.masa.malilib.util.LayerRange;
 import fi.dy.masa.malilib.util.SubChunkPos;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.BlockFluidRenderer;
 import net.minecraft.client.renderer.BlockModelShapes;
 import net.minecraft.client.renderer.BlockRendererDispatcher;
 import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.ViewFrustum;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.chunk.CompiledChunk;
@@ -55,7 +56,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorldReader;
-import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 
 public class WorldRendererSchematic extends WorldRenderer
@@ -68,7 +68,7 @@ public class WorldRendererSchematic extends WorldRenderer
     private final Set<TileEntity> setTileEntities = new HashSet<>();
     private final List<RenderChunkSchematicVbo> renderInfos = new ArrayList<>(1024);
     private Set<RenderChunkSchematicVbo> chunksToUpdate = new LinkedHashSet<>();
-    private WorldClient world;
+    private WorldSchematic world;
     private ViewFrustum viewFrustum;
     private double frustumUpdatePosX = Double.MIN_VALUE;
     private double frustumUpdatePosY = Double.MIN_VALUE;
@@ -162,8 +162,7 @@ public class WorldRendererSchematic extends WorldRenderer
         return count;
     }
 
-    @Override
-    public void setWorldAndLoadRenderers(@Nullable WorldClient worldClientIn)
+    public void setWorldAndLoadRenderers(@Nullable WorldSchematic worldSchematic)
     {
         if (this.world != null)
         {
@@ -177,11 +176,11 @@ public class WorldRendererSchematic extends WorldRenderer
         this.frustumUpdatePosChunkY = Integer.MIN_VALUE;
         this.frustumUpdatePosChunkZ = Integer.MIN_VALUE;
         //this.renderManager.setWorld(worldClientIn);
-        this.world = worldClientIn;
+        this.world = worldSchematic;
 
-        if (worldClientIn != null)
+        if (worldSchematic != null)
         {
-            worldClientIn.addEventListener(this);
+            worldSchematic.addEventListener(this);
             this.loadRenderers();
         }
         else
@@ -207,9 +206,7 @@ public class WorldRendererSchematic extends WorldRenderer
     @Override
     public void loadRenderers()
     {
-        World world = this.world;
-
-        if (world != null)
+        if (this.world != null)
         {
             if (this.renderDispatcher == null)
             {
@@ -245,7 +242,7 @@ public class WorldRendererSchematic extends WorldRenderer
                 this.setTileEntities.clear();
             }
 
-            this.viewFrustum = new ViewFrustum(world, this.mc.gameSettings.renderDistanceChunks, this, this.renderChunkFactory);
+            this.viewFrustum = new ViewFrustum(this.world, this.mc.gameSettings.renderDistanceChunks, this, this.renderChunkFactory);
 
             Entity entity = this.mc.getRenderViewEntity();
 
@@ -268,27 +265,23 @@ public class WorldRendererSchematic extends WorldRenderer
     @Override
     public void setupTerrain(Entity viewEntity, float partialTicks, ICamera camera, int frameCount, boolean playerSpectator)
     {
-        World world = this.world;
-        if (world == null)
-            return;
-
-        world.profiler.startSection("setup_terrain");
+        this.world.profiler.startSection("setup_terrain");
 
         if (this.viewFrustum == null || this.mc.gameSettings.renderDistanceChunks != this.renderDistanceChunks)
         {
             this.loadRenderers();
         }
 
-        world.profiler.startSection("camera");
+        this.world.profiler.startSection("camera");
 
         double diffX = viewEntity.posX - this.frustumUpdatePosX;
         double diffY = viewEntity.posY - this.frustumUpdatePosY;
         double diffZ = viewEntity.posZ - this.frustumUpdatePosZ;
 
         if (this.frustumUpdatePosChunkX != viewEntity.chunkCoordX ||
-                this.frustumUpdatePosChunkY != viewEntity.chunkCoordY ||
-                this.frustumUpdatePosChunkZ != viewEntity.chunkCoordZ ||
-                diffX * diffX + diffY * diffY + diffZ * diffZ > 16.0D)
+            this.frustumUpdatePosChunkY != viewEntity.chunkCoordY ||
+            this.frustumUpdatePosChunkZ != viewEntity.chunkCoordZ ||
+            diffX * diffX + diffY * diffY + diffZ * diffZ > 16.0D)
         {
             this.frustumUpdatePosX = viewEntity.posX;
             this.frustumUpdatePosY = viewEntity.posY;
@@ -299,13 +292,13 @@ public class WorldRendererSchematic extends WorldRenderer
             this.viewFrustum.updateChunkPositions(viewEntity.posX, viewEntity.posZ);
         }
 
-        world.profiler.endStartSection("renderlist_camera");
+        this.world.profiler.endStartSection("renderlist_camera");
         double x = viewEntity.lastTickPosX + (viewEntity.posX - viewEntity.lastTickPosX) * partialTicks;
         double y = viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks;
         double z = viewEntity.lastTickPosZ + (viewEntity.posZ - viewEntity.lastTickPosZ) * partialTicks;
         this.renderContainer.initialize(x, y, z);
 
-        world.profiler.endStartSection("culling");
+        this.world.profiler.endStartSection("culling");
         BlockPos viewPos = new BlockPos(x, y + (double) viewEntity.getEyeHeight(), z);
         final int centerChunkX = (viewPos.getX() >> 4);
         final int centerChunkZ = (viewPos.getZ() >> 4);
@@ -325,11 +318,11 @@ public class WorldRendererSchematic extends WorldRenderer
         this.lastViewEntityPitch = viewEntity.rotationPitch;
         this.lastViewEntityYaw = viewEntity.rotationYaw;
 
-        world.profiler.endStartSection("update");
+        this.world.profiler.endStartSection("update");
 
         if (this.displayListEntitiesDirty)
         {
-            world.profiler.startSection("fetch");
+            this.world.profiler.startSection("fetch");
 
             this.displayListEntitiesDirty = false;
             this.renderInfos.clear();
@@ -344,9 +337,9 @@ public class WorldRendererSchematic extends WorldRenderer
             //Queue<SubChunkPos> queuePositions = new PriorityQueue<>(new SubChunkPos.DistanceComparator(viewSubChunk));
             //queuePositions.addAll(set);
 
-            //if (GuiScreen.isCtrlKeyDown()) System.out.printf("sorted positions: %d\n", positions.size());
+            //if (GuiBase.isCtrlDown()) System.out.printf("sorted positions: %d\n", positions.size());
 
-            world.profiler.endStartSection("iteration");
+            this.world.profiler.endStartSection("iteration");
 
             //while (queuePositions.isEmpty() == false)
             for (int i = 0; i < positions.size(); ++i)
@@ -357,8 +350,8 @@ public class WorldRendererSchematic extends WorldRenderer
                 // Only render sub-chunks that are within the client's render distance, and that
                 // have been already properly loaded on the client
                 if (Math.abs(subChunk.getX() - centerChunkX) <= renderDistance &&
-                        Math.abs(subChunk.getZ() - centerChunkZ) <= renderDistance &&
-                        world.getChunkProvider().getChunk(subChunk.getX(), subChunk.getZ(), false, false) != null)
+                    Math.abs(subChunk.getZ() - centerChunkZ) <= renderDistance &&
+                    this.world.getChunkProvider().isChunkLoaded(subChunk.getX(), subChunk.getZ()))
                 {
                     BlockPos subChunkCornerPos = new BlockPos(subChunk.getX() << 4, subChunk.getY() << 4, subChunk.getZ() << 4);
                     RenderChunkSchematicVbo renderChunk = (RenderChunkSchematicVbo) ((IMixinViewFrustum) this.viewFrustum).invokeGetRenderChunk(subChunkCornerPos);
@@ -367,7 +360,7 @@ public class WorldRendererSchematic extends WorldRenderer
                     {
                         if (renderChunk.setFrameIndex(frameCount) && camera.isBoundingBoxInFrustum(renderChunk.boundingBox))
                         {
-                            //if (GuiScreen.isCtrlKeyDown()) System.out.printf("add @ %s\n", subChunk);
+                            //if (GuiBase.isCtrlDown()) System.out.printf("add @ %s\n", subChunk);
                             if (renderChunk.needsUpdate() && subChunkCornerPos.equals(viewPosSubChunk))
                             {
                                 renderChunk.setNeedsUpdate(true);
@@ -379,10 +372,10 @@ public class WorldRendererSchematic extends WorldRenderer
                 }
             }
 
-            world.profiler.endSection();
+            this.world.profiler.endSection();
         }
 
-        world.profiler.endStartSection("rebuild_near");
+        this.world.profiler.endStartSection("rebuild_near");
         Set<RenderChunkSchematicVbo> set = this.chunksToUpdate;
         this.chunksToUpdate = new LinkedHashSet<>();
 
@@ -397,31 +390,29 @@ public class WorldRendererSchematic extends WorldRenderer
                 if (renderChunkTmp.needsImmediateUpdate() == false && isNear == false)
                 {
                     this.chunksToUpdate.add(renderChunkTmp);
-                } else
+                }
+                else
                 {
-                    //if (GuiScreen.isCtrlKeyDown()) System.out.printf("====== update now\n");
-                    world.profiler.startSection("build_near");
+                    //if (GuiBase.isCtrlDown()) System.out.printf("====== update now\n");
+                    this.world.profiler.startSection("build_near");
 
                     this.renderDispatcher.updateChunkNow(renderChunkTmp);
                     renderChunkTmp.clearNeedsUpdate();
 
-                    world.profiler.endSection();
+                    this.world.profiler.endSection();
                 }
             }
         }
 
         this.chunksToUpdate.addAll(set);
 
-        world.profiler.endSection();
-        world.profiler.endSection();
+        this.world.profiler.endSection();
+        this.world.profiler.endSection();
     }
 
     @Override
     public void updateChunks(long finishTimeNano)
     {
-        if (this.world == null)
-            return;
-
         this.displayListEntitiesDirty |= this.renderDispatcher.runChunkUploads(finishTimeNano);
 
         if (this.chunksToUpdate.isEmpty() == false)
@@ -459,11 +450,12 @@ public class WorldRendererSchematic extends WorldRenderer
         }
     }
 
+    @Override
     public int renderBlockLayer(BlockRenderLayer blockLayerIn, double partialTicks, Entity entityIn)
     {
         this.world.profiler.startSection("render_block_layer_" + blockLayerIn);
 
-        RenderHelper.disableStandardItemLighting();
+        RenderUtils.disableItemLighting();
 
         if (blockLayerIn == BlockRenderLayer.TRANSLUCENT)
         {
@@ -550,9 +542,9 @@ public class WorldRendererSchematic extends WorldRenderer
                         GlStateManager.disableClientState(GL11.GL_VERTEX_ARRAY);
                         break;
                     case UV:
-                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0  + index);
+                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0 + index);
                         GlStateManager.disableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0 );
+                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0);
                         break;
                     case COLOR:
                         GlStateManager.disableClientState(GL11.GL_COLOR_ARRAY);
@@ -623,9 +615,9 @@ public class WorldRendererSchematic extends WorldRenderer
                         GlStateManager.disableClientState(GL11.GL_VERTEX_ARRAY);
                         break;
                     case UV:
-                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0  + element.getIndex());
+                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0 + element.getIndex());
                         GlStateManager.disableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0 );
+                        OpenGlHelper.glClientActiveTexture(OpenGlHelper.GL_TEXTURE0);
                         break;
                     case COLOR:
                         GlStateManager.disableClientState(GL11.GL_COLOR_ARRAY);
@@ -638,7 +630,7 @@ public class WorldRendererSchematic extends WorldRenderer
         this.mc.gameRenderer.disableLightmap();
     }
 
-    public boolean renderBlock(IBlockState state, BlockPos pos, IWorldReader  world, BufferBuilder bufferBuilderIn)
+    public boolean renderBlock(IBlockState state, BlockPos pos, IWorldReader world, BufferBuilder bufferBuilderIn)
     {
         try
         {
@@ -665,7 +657,7 @@ public class WorldRendererSchematic extends WorldRenderer
         {
             CrashReport crashreport = CrashReport.makeCrashReport(throwable, "Tesselating block in world");
             CrashReportCategory crashreportcategory = crashreport.makeCategory("Block being tesselated");
-            CrashReportCategory.addBlockInfo(crashreportcategory, pos, null);
+            CrashReportCategory.addBlockInfo(crashreportcategory, pos, state);
             throw new ReportedException(crashreport);
         }
     }
@@ -717,9 +709,9 @@ public class WorldRendererSchematic extends WorldRenderer
             TileEntityRendererDispatcher.staticPlayerY = entityY;
             TileEntityRendererDispatcher.staticPlayerZ = entityZ;
             this.renderManager.setRenderPosition(entityX, entityY, entityZ);
-            this.mc.gameRenderer.enableLightmap();
 
-            this.countEntitiesTotal = this.world.loadedEntityList.size();
+            this.mc.gameRenderer.enableLightmap();
+            this.countEntitiesTotal = this.world.func_212419_R();
 
             this.world.profiler.endStartSection("regular_entities");
             List<Entity> entitiesOutlined = Lists.<Entity>newArrayList();
@@ -790,7 +782,7 @@ public class WorldRendererSchematic extends WorldRenderer
                     GlStateManager.depthFunc(519);
                     GlStateManager.disableFog();
                     this.entityOutlineFramebuffer.bindFramebuffer(false);
-                    RenderHelper.disableStandardItemLighting();
+                    RenderUtils.disableItemLighting();
                     this.renderManager.setRenderOutlines(true);
 
                     for (int i = 0; i < entitiesOutlined.size(); ++i)
@@ -799,7 +791,7 @@ public class WorldRendererSchematic extends WorldRenderer
                     }
 
                     this.renderManager.setRenderOutlines(false);
-                    RenderHelper.enableStandardItemLighting();
+                    RenderUtils.enableItemLighting();
                     GlStateManager.depthMask(false);
 
                     this.entityOutlineShader.render(partialTicks);
@@ -819,17 +811,32 @@ public class WorldRendererSchematic extends WorldRenderer
             */
 
             this.world.profiler.endStartSection("block_entities");
-            RenderHelper.enableStandardItemLighting();
+            fi.dy.masa.malilib.render.RenderUtils.enableItemLighting();
 
-            for (RenderChunk renderChunk : this.renderInfos)
+            for (RenderChunkSchematicVbo renderChunk : this.renderInfos)
             {
                 List<TileEntity> tiles = renderChunk.getCompiledChunk().getTileEntities();
 
-                if (tiles.isEmpty() == false)
+                if (tiles.isEmpty() == false) 
                 {
-                    for (TileEntity te : tiles)
+                    BlockPos pos = renderChunk.getPosition();
+                    ChunkSchematic chunk = this.world.getChunkProvider().getChunk(pos.getX() >> 4, pos.getZ() >> 4);
+                    CompiledChunk compiledChunk = renderChunk.getCompiledChunk();
+
+                    if (chunk != null &&
+                        compiledChunk instanceof CompiledChunkSchematic &&
+                        ((CompiledChunkSchematic) compiledChunk).getTimeBuilt() >= chunk.getTimeCreated())
                     {
-                        TileEntityRendererDispatcher.instance.render(te, partialTicks, -1);
+                        for (TileEntity te : tiles)
+                        {
+                            try
+                            {
+                                TileEntityRendererDispatcher.instance.render(te, partialTicks, -1);
+                            }
+                            catch (Exception e)
+                            {
+                            }
+                        }
                     }
                 }
             }
@@ -838,12 +845,18 @@ public class WorldRendererSchematic extends WorldRenderer
             {
                 for (TileEntity te : this.setTileEntities)
                 {
-                    TileEntityRendererDispatcher.instance.render(te, partialTicks, -1);
+                    try
+                    {
+                        TileEntityRendererDispatcher.instance.render(te, partialTicks, -1);
+                    }
+                    catch (Exception e)
+                    {
+                    }
                 }
             }
 
             this.mc.gameRenderer.disableLightmap();
-            this.mc.profiler.endSection();
+            this.world.profiler.endSection();
         }
     }
 
@@ -896,8 +909,8 @@ public class WorldRendererSchematic extends WorldRenderer
     @Override public void notifyLightSet(BlockPos pos) {}
     @Override public void playSoundToAllNearExcept(@Nullable EntityPlayer player, SoundEvent soundIn, SoundCategory category, double x, double y, double z, float volume, float pitch) {}
     @Override public void playRecord(SoundEvent soundIn, BlockPos pos) {}
-    @Override public void addParticle(IParticleData p_addParticle_1_, boolean p_addParticle_2_, double p_addParticle_3_, double p_addParticle_5_, double p_addParticle_7_, double p_addParticle_9_, double p_addParticle_11_, double p_addParticle_13_) {}
-    @Override public void addParticle(IParticleData p_addParticle_1_, boolean p_addParticle_2_, boolean p_addParticle_3_, double p_addParticle_4_, double p_addParticle_6_, double p_addParticle_8_, double p_addParticle_10_, double p_addParticle_12_, double p_addParticle_14_) {}
+    @Override public void addParticle(IParticleData particle, boolean ignoreRange, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {}
+    @Override public void addParticle(IParticleData particle, boolean ignoreRange, boolean minimizeLevel, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {}
     @Override public void onEntityAdded(Entity entityIn) {}
     @Override public void onEntityRemoved(Entity entityIn) {}
     @Override public void broadcastSound(int soundID, BlockPos pos, int data) {}

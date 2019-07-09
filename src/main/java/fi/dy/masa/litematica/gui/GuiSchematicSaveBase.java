@@ -1,7 +1,6 @@
 package fi.dy.masa.litematica.gui;
 
 import javax.annotation.Nullable;
-
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
 import fi.dy.masa.malilib.gui.GuiTextFieldGeneric;
 import fi.dy.masa.malilib.gui.Message.MessageType;
@@ -13,18 +12,15 @@ import fi.dy.masa.malilib.gui.widgets.WidgetFileBrowserBase.DirectoryEntry;
 import fi.dy.masa.malilib.gui.widgets.WidgetFileBrowserBase.DirectoryEntryType;
 import fi.dy.masa.malilib.util.FileUtils;
 import fi.dy.masa.malilib.util.KeyCodes;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiTextField;
-import net.minecraft.client.resources.I18n;
+import fi.dy.masa.malilib.util.StringUtils;
 
 public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase implements ISelectionListener<DirectoryEntry>
 {
-    protected GuiTextField textField;
-    @Nullable
-    protected final LitematicaSchematic schematic;
+    protected GuiTextFieldGeneric textField;
     protected WidgetCheckBox checkboxIgnoreEntities;
     protected String lastText = "";
     protected String defaultText = "";
+    @Nullable protected final LitematicaSchematic schematic;
 
     public GuiSchematicSaveBase(@Nullable LitematicaSchematic schematic)
     {
@@ -54,9 +50,13 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
     {
         super.initGui();
 
-        this.textField = new GuiTextFieldGeneric(10, 32, this.width - 196, 20, mc.fontRenderer);
-        this.textField.setMaxStringLength(256);
-        this.textField.setFocused(true);
+        boolean focused = this.textField.isFocused();
+        String text = this.textField.getText();
+        int pos = this.textField.getCursorPosition();
+        this.textField = new GuiTextFieldGeneric(10, 32, this.width - 196, 20, this.textRenderer);
+        this.textField.setText(text);
+        this.textField.setCursorPosition(pos);
+        this.textField.setFocused(focused);
 
         DirectoryEntry entry = this.getListWidget().getLastSelectedEntry();
 
@@ -81,7 +81,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
         int x = this.textField.x + this.textField.getWidth() + 12;
         int y = 32;
 
-        String str = I18n.format("litematica.gui.label.schematic_save.checkbox.ignore_entities");
+        String str = StringUtils.translate("litematica.gui.label.schematic_save.checkbox.ignore_entities");
         this.checkboxIgnoreEntities = new WidgetCheckBox(x, y + 24, Icons.CHECKBOX_UNSELECTED, Icons.CHECKBOX_SELECTED, str);
         this.addWidget(this.checkboxIgnoreEntities);
 
@@ -104,7 +104,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
 
     private int createButton(int x, int y, ButtonType type)
     {
-        String label = I18n.format(type.getLabelKey());
+        String label = StringUtils.translate(type.getLabelKey());
         int width = this.getStringWidth(label) + 10;
 
         ButtonGeneric button;

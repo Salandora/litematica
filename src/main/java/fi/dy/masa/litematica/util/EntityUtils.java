@@ -19,6 +19,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -141,6 +142,14 @@ public class EntityUtils
         }
 
         return null;
+    }
+
+    @Nullable
+    public static String getEntityId(Entity entity)
+    {
+        EntityType<?> entitytype = entity.getType();
+        ResourceLocation resourcelocation = EntityType.getId(entitytype);
+        return entitytype.isSerializable() && resourcelocation != null ? resourcelocation.toString() : null;
     }
 
     @Nullable

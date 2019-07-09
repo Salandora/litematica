@@ -9,16 +9,16 @@ import com.google.common.collect.ArrayListMultimap;
 import fi.dy.masa.litematica.render.infohud.InfoHud;
 import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.util.PositionUtils;
+import fi.dy.masa.malilib.util.IntBoundingBox;
+import fi.dy.masa.malilib.util.StringUtils;
 import fi.dy.masa.malilib.util.WorldUtils;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.resources.I18n;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MutableBoundingBox;
 import net.minecraft.world.World;
 
 public abstract class TaskProcessChunkBase extends TaskBase
 {
-    protected final ArrayListMultimap<ChunkPos, MutableBoundingBox> boxesInChunks = ArrayListMultimap.create();
+    protected final ArrayListMultimap<ChunkPos, IntBoundingBox> boxesInChunks = ArrayListMultimap.create();
     protected final Set<ChunkPos> requiredChunks = new HashSet<>();
     protected final WorldClient worldClient;
     protected final World world;
@@ -29,7 +29,7 @@ public abstract class TaskProcessChunkBase extends TaskBase
         this.worldClient = this.mc.world;
         this.world = WorldUtils.getBestWorld(this.mc);
         this.isClientWorld = (this.world == this.mc.world);
-        this.name = I18n.format(nameOnHud);
+        this.name = StringUtils.translate(nameOnHud);
 
         InfoHud.getInstance().addInfoHudRenderer(this, true);
     }
@@ -109,7 +109,7 @@ public abstract class TaskProcessChunkBase extends TaskBase
         }
     }
 
-    protected List<MutableBoundingBox> getBoxesInChunk(ChunkPos pos)
+    protected List<IntBoundingBox> getBoxesInChunk(ChunkPos pos)
     {
         return this.boxesInChunks.get(pos);
     }

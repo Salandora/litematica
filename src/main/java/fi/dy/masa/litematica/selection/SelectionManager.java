@@ -29,15 +29,14 @@ import fi.dy.masa.malilib.util.JsonUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 public class SelectionManager
 {
+    private final Minecraft mc = Minecraft.getInstance();
     private final Map<String, AreaSelection> selections = new HashMap<>();
     private final Map<String, AreaSelection> readOnlySelections = new HashMap<>();
     @Nullable
@@ -323,7 +322,7 @@ public class SelectionManager
 
         AreaSelection selection = new AreaSelection();
         selection.setName(name);
-        BlockPos pos = new BlockPos(Minecraft.getInstance().player);
+        BlockPos pos = new BlockPos(this.mc.player);
         selection.createNewSubRegionBox(pos, name);
 
         this.selections.put(selectionId, selection);
@@ -526,7 +525,7 @@ public class SelectionManager
 
             if (movingCorner || movingOrigin)
             {
-                BlockPos pos = this.getTargetedPosition(mc.world, mc.player, maxDistance, true);
+                BlockPos pos = RayTraceUtils.getTargetedPosition(mc.world, mc.player, maxDistance, true);
 
                 if (pos == null)
                 {
@@ -584,7 +583,7 @@ public class SelectionManager
         {
             if (selection.isOriginSelected())
             {
-                BlockPos newOrigin = this.getTargetedPosition(mc.world, mc.player, maxDistance, true);
+                BlockPos newOrigin = RayTraceUtils.getTargetedPosition(mc.world, mc.player, maxDistance, true);
 
                 if (newOrigin != null)
                 {
@@ -610,7 +609,7 @@ public class SelectionManager
 
         if (area != null && area.getSelectedSubRegionBox() != null)
         {
-            BlockPos pos = this.getTargetedPosition(mc.world, mc.player, maxDistance, true);
+            BlockPos pos = RayTraceUtils.getTargetedPosition(mc.world, mc.player, maxDistance, true);
 
             if (pos != null)
             {
@@ -626,7 +625,7 @@ public class SelectionManager
 
         if (sel != null && sel.getSelectedSubRegionBox() != null)
         {
-            BlockPos pos = this.getTargetedPosition(mc.world, mc.player, maxDistance, true);
+            BlockPos pos = RayTraceUtils.getTargetedPosition(mc.world, mc.player, maxDistance, true);
 
             if (pos != null)
             {
@@ -663,27 +662,6 @@ public class SelectionManager
         {
             selection.renameSubRegionBox(selection.getName(), newName);
         }
-    }
-
-    @Nullable
-    private BlockPos getTargetedPosition(World world, EntityPlayer player, double maxDistance, boolean sneakToOffset)
-    {
-        RayTraceResult trace = RayTraceUtils.getRayTraceFromEntity(world, player, false, maxDistance);
-
-        if (trace.type != RayTraceResult.Type.BLOCK)
-        {
-            return null;
-        }
-
-        BlockPos pos = trace.getBlockPos();
-
-        // Sneaking puts the position adjacent the targeted block face, not sneaking puts it inside the targeted block
-        if (sneakToOffset && player.isSneaking())
-        {
-            pos = pos.offset(trace.sideHit);
-        }
-
-        return pos;
     }
 
     public void releaseGrabbedElement()
@@ -746,7 +724,7 @@ public class SelectionManager
         if (gui != null)
         {
             gui.setParent(parent);
-            Minecraft.getInstance().displayGuiScreen(gui);
+            GuiBase.openGui(gui);
         }
     }
 

@@ -15,11 +15,9 @@ import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.util.PositionUtils;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.util.InfoUtils;
+import fi.dy.masa.malilib.util.IntBoundingBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MutableBoundingBox;
-import net.minecraft.util.text.TextFormatting;
-import net.minecraft.world.World;
 
 public class TaskSaveSchematic extends TaskProcessChunkBase
 {
@@ -62,7 +60,7 @@ public class TaskSaveSchematic extends TaskProcessChunkBase
     @Override
     protected boolean processChunk(ChunkPos pos)
     {
-        ImmutableMap<String, MutableBoundingBox> volumes = PositionUtils.getBoxesWithinChunk(pos.x, pos.z, this.subRegions);
+        ImmutableMap<String, IntBoundingBox> volumes = PositionUtils.getBoxesWithinChunk(pos.x, pos.z, this.subRegions);
         this.schematic.takeBlocksFromWorldWithinChunk(this.world, pos.x, pos.z, volumes, this.subRegions);
 
         if (this.takeEntities)
@@ -87,7 +85,10 @@ public class TaskSaveSchematic extends TaskProcessChunkBase
             {
                 if (this.schematic.writeToFile(this.dir, this.fileName, this.overrideFile))
                 {
-                    InfoUtils.showGuiOrInGameMessage(MessageType.SUCCESS, "litematica.message.schematic_saved_as", this.fileName);
+                    if (this.printCompletionMessage)
+                    {
+                        InfoUtils.showGuiOrInGameMessage(MessageType.SUCCESS, "litematica.message.schematic_saved_as", this.fileName);
+                    }
                 }
                 else
                 {
@@ -99,7 +100,11 @@ public class TaskSaveSchematic extends TaskProcessChunkBase
             {
                 String name = this.schematic.getMetadata().getName();
                 SchematicHolder.getInstance().addSchematic(this.schematic, true);
-                InfoUtils.showGuiOrInGameMessage(MessageType.SUCCESS, "litematica.message.in_memory_schematic_created", name);
+
+                if (this.printCompletionMessage)
+                {
+                    InfoUtils.showGuiOrInGameMessage(MessageType.SUCCESS, "litematica.message.in_memory_schematic_created", name);
+                }
             }
         }
         else

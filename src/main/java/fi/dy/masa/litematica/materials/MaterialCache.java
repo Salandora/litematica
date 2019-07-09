@@ -9,16 +9,20 @@ import javax.annotation.Nullable;
 import com.google.common.collect.ImmutableList;
 import fi.dy.masa.litematica.Litematica;
 import fi.dy.masa.litematica.Reference;
-import fi.dy.masa.litematica.mixin.IMixinBlockFlowerPot;
 import fi.dy.masa.litematica.util.WorldUtils;
 import fi.dy.masa.litematica.world.WorldSchematic;
 import fi.dy.masa.malilib.util.Constants;
 import fi.dy.masa.malilib.util.FileUtils;
-import net.minecraft.block.*;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockBed;
+import net.minecraft.block.BlockDoor;
+import net.minecraft.block.BlockDoublePlant;
+import net.minecraft.block.BlockFlowerPot;
+import net.minecraft.block.BlockFlowingFluid;
+import net.minecraft.block.BlockSlab;
+import net.minecraft.block.BlockSnowLayer;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.fluid.LavaFluid;
-import net.minecraft.fluid.WaterFluid;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -55,7 +59,7 @@ public class MaterialCache
         this.tempWorld = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.PEACEFUL, Minecraft.getInstance().profiler);
         this.checkPos = new BlockPos(8, 0, 8);
 
-        WorldUtils.loadChunksClientWorld(this.tempWorld, this.checkPos, new Vec3i(1, 1, 1));
+        WorldUtils.loadChunksSchematicWorld(this.tempWorld, this.checkPos, new Vec3i(1, 1, 1));
     }
 
     public static MaterialCache getInstance()
@@ -119,7 +123,7 @@ public class MaterialCache
     {
         Block block = state.getBlock();
 
-        if (block instanceof BlockFlowerPot && ((IMixinBlockFlowerPot)block).getFlower() != Blocks.AIR)
+        if (block instanceof BlockFlowerPot && block != Blocks.FLOWER_POT)
         {
             return true;
         }
@@ -136,10 +140,9 @@ public class MaterialCache
     {
         Block block = state.getBlock();
 
-        if (block instanceof BlockFlowerPot && ((IMixinBlockFlowerPot)block).getFlower() != Blocks.AIR)
+        if (block instanceof BlockFlowerPot && block != Blocks.FLOWER_POT)
         {
-            ItemStack plant = new ItemStack(((IMixinBlockFlowerPot)block).getFlower());
-            return ImmutableList.of(new ItemStack(Blocks.FLOWER_POT), plant);
+            return ImmutableList.of(new ItemStack(Blocks.FLOWER_POT), block.getItem(world, pos, state));
         }
 
         return ImmutableList.of(this.getItemForState(state, world, pos));
@@ -151,7 +154,7 @@ public class MaterialCache
         Block block = state.getBlock();
 
         if (block == Blocks.PISTON_HEAD ||
-            block == Blocks.PISTON ||
+            block == Blocks.PISTON_HEAD ||
             block == Blocks.NETHER_PORTAL ||
             block == Blocks.END_PORTAL ||
             block == Blocks.END_GATEWAY)
@@ -172,7 +175,7 @@ public class MaterialCache
         }
         else if (block == Blocks.LAVA)
         {
-            if (state.get(LavaFluid.LEVEL_1_8) == 0)
+            if (state.get(BlockFlowingFluid.LEVEL) == 0)
             {
                 return new ItemStack(Items.LAVA_BUCKET);
             }
@@ -183,7 +186,7 @@ public class MaterialCache
         }
         else if (block == Blocks.WATER)
         {
-            if (state.get(WaterFluid.LEVEL_1_8) == 0)
+            if (state.get(BlockFlowingFluid.LEVEL) == 0)
             {
                 return new ItemStack(Items.WATER_BUCKET);
             }

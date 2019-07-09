@@ -69,10 +69,11 @@ public class InventoryUtils
 
             inv = (IInventory) te;
             IBlockState state = world.getBlockState(pos);
+            Block block = state.getBlock();
 
-            if (state.getBlock() instanceof BlockChest)
+            if (block instanceof BlockChest)
             {
-                ILockableContainer cont = ((BlockChest) state.getBlock()).getContainer(state, world, pos, true);
+                ILockableContainer cont = ((BlockChest) block).getContainer(state, world, pos, true);
 
                 if (cont instanceof InventoryLargeChest)
                 {

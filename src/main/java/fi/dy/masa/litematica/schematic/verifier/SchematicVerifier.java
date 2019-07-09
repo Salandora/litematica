@@ -31,28 +31,24 @@ import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.interfaces.ICompletionListener;
 import fi.dy.masa.malilib.util.Color4f;
+import fi.dy.masa.malilib.util.IntBoundingBox;
 import fi.dy.masa.malilib.util.LayerRange;
+import fi.dy.masa.malilib.util.StringUtils;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.resources.I18n;
-import net.minecraft.init.Blocks;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MutableBoundingBox;
 import net.minecraft.util.registry.IRegistry;
-import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.chunk.Chunk;
 
 public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
 {
     private static final MutablePair<IBlockState, IBlockState> MUTABLE_PAIR = new MutablePair<>();
     private static final BlockPos.MutableBlockPos MUTABLE_POS = new BlockPos.MutableBlockPos();
-    private static final IBlockState AIR = Blocks.AIR.getDefaultState();
     private static final List<SchematicVerifier> ACTIVE_VERIFIERS = new ArrayList<>();
 
     private final ArrayListMultimap<Pair<IBlockState, IBlockState>, BlockPos> missingBlocksPositions = ArrayListMultimap.create();
@@ -70,6 +66,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
     private final HashMultimap<MismatchType, BlockMismatch> selectedEntries = HashMultimap.create();
     private final Set<ChunkPos> requiredChunks = new HashSet<>();
     private final Set<BlockPos> recheckQueue = new HashSet<>();
+    private final Minecraft mc = Minecraft.getInstance();
     private WorldClient worldClient;
     private WorldSchematic worldSchematic;
     private SchematicPlacement schematicPlacement;
@@ -87,7 +84,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
 
     public SchematicVerifier()
     {
-        this.name = I18n.format("litematica.gui.label.schematic_verifier.verifier");
+        this.name = StringUtils.translate("litematica.gui.label.schematic_verifier.verifier");
     }
 
     public static void clearActiveVerifiers()
@@ -284,7 +281,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
     @Override
     public boolean canExecute()
     {
-        return Minecraft.getInstance().world != null;
+        return this.mc.world != null;
     }
 
     @Override
@@ -488,7 +485,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
                 {
                     for (int cz = pos.z - 1; cz <= pos.z + 1; ++cz)
                     {
-                        if (this.worldClient.isChunkLoaded(cx, cz, false))
+                        if (this.worldClient.getChunkProvider().getChunk(cx, cz, false, false) != null)
                         {
                             ++count;
                         }
@@ -496,13 +493,13 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
                 }
 
                 // Require the surrounding chunks in the client world to be loaded as well
-                if (count == 9 && this.worldSchematic.isChunkLoaded(pos.x, pos.z, false))
+                if (count == 9 && this.worldSchematic.getChunkProvider().isChunkLoaded(pos.x, pos.z))
                 {
                     Chunk chunkClient = this.worldClient.getChunk(pos.x, pos.z);
                     Chunk chunkSchematic = this.worldSchematic.getChunk(pos.x, pos.z);
-                    Map<String, MutableBoundingBox> boxes = this.schematicPlacement.getBoxesWithinChunk(pos.x, pos.z);
+                    Map<String, IntBoundingBox> boxes = this.schematicPlacement.getBoxesWithinChunk(pos.x, pos.z);
 
-                    for (MutableBoundingBox box : boxes.values())
+                    for (IntBoundingBox box : boxes.values())
                     {
                         this.verifyChunk(chunkClient, chunkSchematic, box);
                     }
@@ -673,7 +670,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
         return list;
     }
 
-    private boolean verifyChunk(Chunk chunkClient, Chunk chunkSchematic, MutableBoundingBox box)
+    private boolean verifyChunk(Chunk chunkClient, Chunk chunkSchematic, IntBoundingBox box)
     {
         LayerRange range = DataManager.getRenderLayerRange();
         EnumFacing.Axis axis = range.getAxis();
@@ -718,7 +715,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
     {
         BlockPos pos = new BlockPos(x, y, z);
 
-        if (stateClient != stateSchematic)
+        if (stateClient != stateSchematic && (stateClient.isAir() == false || stateSchematic.isAir() == false))
         {
             MUTABLE_PAIR.setLeft(stateSchematic);
             MUTABLE_PAIR.setRight(stateClient);
@@ -765,7 +762,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
             ItemUtils.setItemForBlock(this.worldClient, pos, stateClient);
             this.correctStateCounts.addTo(stateClient, 1);
 
-            if (stateSchematic != AIR)
+            if (stateSchematic.isAir() == false)
             {
                 ++this.correctStatesCount;
             }
@@ -774,14 +771,12 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
 
     private void updateMismatchOverlays()
     {
-        Minecraft mc = Minecraft.getInstance();
-
-        if (mc.player != null)
+        if (this.mc.player != null)
         {
             int maxEntries = Configs.InfoOverlays.VERIFIER_ERROR_HILIGHT_MAX_POSITIONS.getIntegerValue();
 
             // This needs to happen first
-            BlockPos centerPos = new BlockPos(mc.player.getPositionVector());
+            BlockPos centerPos = new BlockPos(this.mc.player.getPositionVector());
             this.updateClosestPositions(centerPos, maxEntries);
             this.combineClosestPositions(centerPos, maxEntries);
 
@@ -910,7 +905,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
             }
             else
             {
-                String title = I18n.format("litematica.gui.title.schematic_verifier_errors");
+                String title = StringUtils.translate("litematica.gui.title.schematic_verifier_errors");
                 hudLines.add(String.format("%s%s%s", GuiBase.TXT_BOLD, title, rst));
             }
 
@@ -936,7 +931,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
     /**
      * Prepares/caches the strings, and returns a provider for the data.<br>
      * <b>NOTE:</b> This is actually the instance of this class, there are no separate providers for different data types atm!
-     * //@param type
+     * @param type
      * @return
      */
     /*
@@ -1050,7 +1045,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
     {
         ALL             (0xFF0000, "litematica.gui.label.schematic_verifier_display_type.all", GuiBase.TXT_WHITE),
         MISSING         (0x00FFFF, "litematica.gui.label.schematic_verifier_display_type.missing", GuiBase.TXT_AQUA),
-        EXTRA           (0xFF00CF, "litematica.gui.label.schematic_verifier_display_type.extra", TextFormatting.LIGHT_PURPLE.toString()),
+        EXTRA           (0xFF00CF, "litematica.gui.label.schematic_verifier_display_type.extra", GuiBase.TXT_LIGHT_PURPLE),
         WRONG_BLOCK     (0xFF0000, "litematica.gui.label.schematic_verifier_display_type.wrong_blocks", GuiBase.TXT_RED),
         WRONG_STATE     (0xFFAF00, "litematica.gui.label.schematic_verifier_display_type.wrong_state", GuiBase.TXT_GOLD),
         CORRECT_STATE   (0x11FF11, "litematica.gui.label.schematic_verifier_display_type.correct_state", GuiBase.TXT_GREEN);
@@ -1073,7 +1068,7 @@ public class SchematicVerifier extends TaskBase implements IInfoHudRenderer
 
         public String getDisplayname()
         {
-            return I18n.format(this.unlocName);
+            return StringUtils.translate(this.unlocName);
         }
 
         public String getColorCode()

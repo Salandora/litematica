@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Set;
 import com.google.common.collect.ArrayListMultimap;
 import fi.dy.masa.litematica.config.Configs;
+import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.render.infohud.IInfoHudRenderer;
 import fi.dy.masa.litematica.render.infohud.InfoHud;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
+import fi.dy.masa.litematica.util.EntityUtils;
 import fi.dy.masa.litematica.util.PositionUtils.ChunkPosComparator;
 import fi.dy.masa.litematica.util.ReplaceBehavior;
 import fi.dy.masa.litematica.world.SchematicWorldHandler;
@@ -16,28 +18,22 @@ import fi.dy.masa.litematica.world.WorldSchematic;
 import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.util.InfoUtils;
-import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
+import fi.dy.masa.malilib.util.IntBoundingBox;
+import fi.dy.masa.malilib.util.StringUtils;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.resources.I18n;
 import net.minecraft.command.arguments.BlockStateParser;
 import net.minecraft.entity.Entity;
-import net.minecraft.init.Blocks;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MutableBoundingBox;
-import net.minecraft.util.registry.IRegistry;
-import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 
 public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRenderer
 {
-    private final ArrayListMultimap<ChunkPos, MutableBoundingBox> boxesInChunks = ArrayListMultimap.create();
-    private final List<MutableBoundingBox> boxesInCurrentChunk = new ArrayList<>();
+    private final ArrayListMultimap<ChunkPos, IntBoundingBox> boxesInChunks = ArrayListMultimap.create();
+    private final List<IntBoundingBox> boxesInCurrentChunk = new ArrayList<>();
     private final List<ChunkPos> chunks = new ArrayList<>();
     private final ChunkPosComparator comparator;
     private final int maxCommandsPerTick;
@@ -59,7 +55,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         this.comparator = new ChunkPosComparator();
         this.comparator.setClosestFirst(true);
         this.replace = (ReplaceBehavior) Configs.Generic.PASTE_REPLACE_BEHAVIOR.getOptionListValue();
-        this.name = I18n.format("litematica.gui.label.task_name.paste");
+        this.name = StringUtils.translate("litematica.gui.label.task_name.paste");
 
         Set<ChunkPos> touchedChunks = placement.getTouchedChunks();
 
@@ -119,7 +115,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
 
             while (this.boxesInCurrentChunk.isEmpty() == false)
             {
-                MutableBoundingBox box = this.boxesInCurrentChunk.get(0);
+                IntBoundingBox box = this.boxesInCurrentChunk.get(0);
 
                 if (this.processBox(pos, box, worldSchematic, worldClient, this.mc.player))
                 {
@@ -179,9 +175,10 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         }
     }
 
-    protected boolean canProcessChunk(ChunkPos pos, World worldSchematic, WorldClient worldClient)
+    protected boolean canProcessChunk(ChunkPos pos, WorldSchematic worldSchematic, WorldClient worldClient)
     {
-        if (worldSchematic.isChunkLoaded(pos.x, pos.z, false) == false)
+        if (worldSchematic.getChunkProvider().isChunkLoaded(pos.x, pos.z) == false ||
+            DataManager.getSchematicPlacementManager().hasPendingRebuildFor(pos))
         {
             return false;
         }
@@ -190,12 +187,12 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         return this.areSurroundingChunksLoaded(pos, worldClient, 1);
     }
 
-    protected boolean processBox(ChunkPos pos, MutableBoundingBox box,
+    protected boolean processBox(ChunkPos pos, IntBoundingBox box,
             WorldSchematic worldSchematic, WorldClient worldClient, EntityPlayerSP player)
     {
         BlockPos.MutableBlockPos posMutable = new BlockPos.MutableBlockPos();
-        Chunk chunkSchematic = worldSchematic.getChunk(pos.x, pos.z);
-        Chunk chunkClient = worldClient.getChunk(pos.x, pos.z);
+        Chunk chunkSchematic = worldSchematic.getChunkProvider().getChunk(pos.x, pos.z);
+        Chunk chunkClient = worldClient.getChunkProvider().getChunk(pos.x, pos.z, false, false);
 
         if (this.boxInProgress == false)
         {
@@ -224,25 +221,20 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
 
             ++this.currentIndex;
 
-            IBlockState stateSchematicOrig = chunkSchematic.getBlockState(posMutable);
+            IBlockState stateSchematic = chunkSchematic.getBlockState(posMutable);
             IBlockState stateClient = chunkClient.getBlockState(posMutable);
 
-            if (stateSchematicOrig.getBlock() != Blocks.AIR || stateClient.getBlock() != Blocks.AIR)
+            if (stateSchematic.isAir() == false || stateClient.isAir() == false)
             {
-                // Discard the non-meta state info, as it depends on neighbor blocks which will
-                // be synced with some delay from the server
-                //@SuppressWarnings("deprecation")
-                //IBlockState stateSchematic = stateSchematicOrig.getBlock().getStateFromMeta(stateSchematicOrig.getBlock().getMetaFromState(stateSchematicOrig));
-
-                if (this.changedBlockOnly == false || stateClient != stateSchematicOrig)
+                if (this.changedBlockOnly == false || stateClient != stateSchematic)
                 {
-                    if ((this.replace == ReplaceBehavior.NONE && stateClient.getMaterial() != Material.AIR) ||
-                        (this.replace == ReplaceBehavior.WITH_NON_AIR && stateSchematicOrig.getMaterial() == Material.AIR))
+                    if ((this.replace == ReplaceBehavior.NONE && stateClient.isAir() == false) ||
+                        (this.replace == ReplaceBehavior.WITH_NON_AIR && stateSchematic.isAir()))
                     {
                         continue;
                     }
 
-                    this.sendSetBlockCommand(posMutable.getX(), posMutable.getY(), posMutable.getZ(), stateSchematicOrig, player);
+                    this.sendSetBlockCommand(posMutable.getX(), posMutable.getY(), posMutable.getZ(), stateSchematic, player);
 
                     if (++this.sentCommandsThisTick >= this.maxCommandsPerTick)
                     {
@@ -263,25 +255,24 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         return false;
     }
 
-    private void summonEntities(MutableBoundingBox box, WorldSchematic worldSchematic, EntityPlayerSP player)
+    private void summonEntities(IntBoundingBox box, WorldSchematic worldSchematic, EntityPlayerSP player)
     {
         AxisAlignedBB bb = new AxisAlignedBB(box.minX, box.minY, box.minZ, box.maxX + 1, box.maxY + 1, box.maxZ + 1);
         List<Entity> entities = worldSchematic.getEntitiesWithinAABBExcludingEntity(null, bb);
 
         for (Entity entity : entities)
         {
-            ResourceLocation rl = IRegistry.ENTITY_TYPE.getKey(entity.getType());
+            String id = EntityUtils.getEntityId(entity);
 
-            if (rl != null)
+            if (id != null)
             {
-                String entityName = rl.toString();
                 /*
                 NBTTagCompound nbt = new NBTTagCompound();
                 entity.writeToNBTOptional(nbt);
                 String nbtString = nbt.toString();
                 */
 
-                String strCommand = String.format("/summon %s %f %f %f", entityName, entity.posX, entity.posY, entity.posZ);
+                String strCommand = String.format("/summon %s %f %f %f", id, entity.posX, entity.posY, entity.posZ);
                 /*
                 String strCommand = String.format("/summon %s %f %f %f %s", entityName, entity.posX, entity.posY, entity.posZ, nbtString);
                 System.out.printf("entity: %s\n", entity);
@@ -296,16 +287,9 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
 
     private void sendSetBlockCommand(int x, int y, int z, IBlockState state, EntityPlayerSP player)
     {
-        Block block = state.getBlock();
-        ResourceLocation rl = IRegistry.BLOCK.getKey(block);
-
-        if (rl == null)
-        {
-            return;
-        }
-
         String cmdName = Configs.Generic.PASTE_COMMAND_SETBLOCK.getStringValue();
-        String strCommand = String.format("/%s %d %d %d %s", cmdName, x, y, z, BlockStateParser.toString(state, null));
+        String blockString = BlockStateParser.toString(state, null);
+        String strCommand = String.format("/%s %d %d %d %s", cmdName, x, y, z, blockString);
 
         player.sendChatMessage(strCommand);
         ++this.sentCommandsTotal;
@@ -338,7 +322,7 @@ public class TaskPasteSchematicSetblock extends TaskBase implements IInfoHudRend
         List<String> hudLines = new ArrayList<>();
 
         String pre = GuiBase.TXT_WHITE + GuiBase.TXT_BOLD;
-        String title = I18n.format("litematica.gui.label.schematic_paste.missing_chunks", this.chunks.size());
+        String title = StringUtils.translate("litematica.gui.label.schematic_paste.missing_chunks", this.chunks.size());
         hudLines.add(String.format("%s%s%s", pre, title, GuiBase.TXT_RST));
 
         int maxLines = Math.min(this.chunks.size(), Configs.InfoOverlays.INFO_HUD_MAX_LINES.getIntegerValue());

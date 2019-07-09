@@ -12,11 +12,10 @@ import fi.dy.masa.litematica.scheduler.ITask;
 import fi.dy.masa.litematica.scheduler.TaskTimer;
 import fi.dy.masa.litematica.util.PositionUtils;
 import fi.dy.masa.malilib.gui.GuiBase;
-import fi.dy.masa.litematica.world.WorldSchematic;
 import fi.dy.masa.malilib.interfaces.ICompletionListener;
+import fi.dy.masa.malilib.util.StringUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -29,7 +28,8 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
     protected String name = "";
     protected List<String> infoHudLines = new ArrayList<>();
     protected boolean finished;
-    @Nullable protected ICompletionListener completionListener;
+    protected boolean printCompletionMessage = true;
+    @Nullable private ICompletionListener completionListener;
 
     protected TaskBase()
     {
@@ -52,6 +52,11 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
     public void createTimer(int interval)
     {
         this.timer = new TaskTimer(interval);
+    }
+
+    public void disableCompletionMessage()
+    {
+        this.printCompletionMessage = false;
     }
 
     public void setCompletionListener(@Nullable ICompletionListener listener)
@@ -86,14 +91,17 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
     {
         if (this.completionListener != null)
         {
-            if (this.finished)
+            this.mc.addScheduledTask(() ->
             {
-                this.completionListener.onTaskCompleted();
-            }
-            else
-            {
-                this.completionListener.onTaskAborted();
-            }
+                if (this.finished)
+                {
+                    this.completionListener.onTaskCompleted();
+                }
+                else
+                {
+                    this.completionListener.onTaskAborted();
+                }
+            });
         }
     }
 
@@ -101,7 +109,7 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
     {
         if (radius <= 0)
         {
-            return world.isChunkLoaded(pos.x, pos.z, false);
+            return world.getChunkProvider().getChunk(pos.x, pos.z, false, false) != null;
         }
 
         int chunkX = pos.x;
@@ -111,7 +119,7 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
         {
             for (int cz = chunkZ - radius; cz <= chunkZ + radius; ++cz)
             {
-                if (world.isChunkLoaded(cx, cz, false) == false)
+                if (world.getChunkProvider().getChunk(cx, cz, false, false) == null)
                 {
                     return false;
                 }
@@ -135,7 +143,7 @@ public abstract class TaskBase implements ITask, IInfoHudRenderer
             Collections.sort(list, PositionUtils.CHUNK_POS_COMPARATOR);
 
             String pre = GuiBase.TXT_WHITE + GuiBase.TXT_BOLD;
-            String title = I18n.format("litematica.gui.label.missing_chunks", this.name, requiredChunks.size());
+            String title = StringUtils.translate("litematica.gui.label.missing_chunks", this.name, requiredChunks.size());
             hudLines.add(String.format("%s%s%s", pre, title, GuiBase.TXT_RST));
 
             int maxLines = Math.min(list.size(), Configs.InfoOverlays.INFO_HUD_MAX_LINES.getIntegerValue());

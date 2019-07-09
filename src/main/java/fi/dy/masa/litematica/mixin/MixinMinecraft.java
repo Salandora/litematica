@@ -9,8 +9,6 @@ import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.util.WorldUtils;
 import net.minecraft.client.Minecraft;
 
-import javax.annotation.Nullable;
-
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraft
 {

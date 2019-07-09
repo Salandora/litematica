@@ -22,10 +22,10 @@ import fi.dy.masa.litematica.selection.SelectionMode;
 import fi.dy.masa.litematica.util.ToolUtils;
 import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.interfaces.ICompletionListener;
+import fi.dy.masa.malilib.util.GuiUtils;
 import fi.dy.masa.malilib.util.InfoUtils;
 import fi.dy.masa.malilib.util.JsonUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.util.math.BlockPos;
 
 public class SchematicProject
@@ -242,13 +242,11 @@ public class SchematicProject
 
             this.cacheCurrentAreaFromPlacement();
 
-            ToolUtils.deleteSelectionVolumes(this.lastSeenArea, true, () -> this.pastePlacement(mc), mc);
+            ToolUtils.deleteSelectionVolumes(this.lastSeenArea, true, () ->
+            {
+                DataManager.getSchematicPlacementManager().pastePlacementToWorld(this.currentPlacement, false, mc);
+            }, mc);
         }
-    }
-
-    private void pastePlacement(Minecraft mc)
-    {
-        DataManager.getSchematicPlacementManager().pastePlacementToWorld(this.currentPlacement, false, mc);
     }
 
     public void deleteLastSeenArea(Minecraft mc)
@@ -560,11 +558,9 @@ public class SchematicProject
             SchematicProject.this.cacheCurrentAreaFromPlacement();
             SchematicProject.this.saveInProgress = false;
 
-            GuiScreen gui = Minecraft.getInstance().currentScreen;
-
-            if (gui instanceof ICompletionListener)
+            if (GuiUtils.getCurrentScreen() instanceof ICompletionListener)
             {
-                ((ICompletionListener) gui).onTaskCompleted();
+                ((ICompletionListener) GuiUtils.getCurrentScreen()).onTaskCompleted();
             }
 
             InfoUtils.showGuiOrInGameMessage(MessageType.SUCCESS, "litematica.message.schematic_projects.version_saved", this.version, this.name);

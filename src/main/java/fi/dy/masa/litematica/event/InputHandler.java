@@ -5,7 +5,6 @@ import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.gui.GuiSchematicManager;
-import fi.dy.masa.litematica.mixin.IMixinKeyBinding;
 import fi.dy.masa.litematica.selection.AreaSelection;
 import fi.dy.masa.litematica.selection.Box;
 import fi.dy.masa.litematica.selection.SelectionManager;
@@ -22,6 +21,7 @@ import fi.dy.masa.malilib.hotkeys.IKeybindProvider;
 import fi.dy.masa.malilib.hotkeys.IKeyboardInputHandler;
 import fi.dy.masa.malilib.hotkeys.IMouseInputHandler;
 import fi.dy.masa.malilib.hotkeys.KeybindMulti;
+import fi.dy.masa.malilib.util.GuiUtils;
 import fi.dy.masa.malilib.util.InfoUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
@@ -56,7 +56,6 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
         manager.addHotkeysForCategory(Reference.MOD_NAME, "litematica.hotkeys.category.generic_hotkeys", Hotkeys.HOTKEY_LIST);
     }
 
-
     @Override
     public boolean onKeyInput(int keyCode, int scanCode, int modifiers, boolean eventKeyState)
     {
@@ -64,15 +63,15 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
         {
             Minecraft mc = Minecraft.getInstance();
 
-            if (mc.gameSettings.keyBindUseItem.isKeyDown())
+            if (mc.gameSettings.keyBindUseItem.matchesKey(keyCode, scanCode))
             {
                 return this.handleUseKey(mc);
             }
-            else if (mc.gameSettings.keyBindAttack.isKeyDown())
+            else if (mc.gameSettings.keyBindAttack.matchesKey(keyCode, scanCode))
             {
                 return this.handleAttackKey(mc);
             }
-            else if (mc.gameSettings.keyBindScreenshot.isKeyDown() && GuiSchematicManager.hasPendingPreviewTask())
+            else if (mc.gameSettings.keyBindScreenshot.matchesKey(keyCode, scanCode) && GuiSchematicManager.hasPendingPreviewTask())
             {
                 return GuiSchematicManager.setPreviewImage();
             }
@@ -86,89 +85,98 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
     {
         Minecraft mc = Minecraft.getInstance();
 
-        if (mc.currentScreen == null && mc.world != null && mc.player != null && eventButtonState)
+        // Tool enabled, and not in a GUI
+        if (GuiUtils.getCurrentScreen() == null && mc.world != null && mc.player != null && eventButtonState)
         {
-            if (mc.gameSettings.keyBindUseItem.func_197984_a(eventButton))
+            if (eventButtonState && mc.gameSettings.keyBindUseItem.func_197984_a(eventButton))
             {
                 return this.handleUseKey(mc);
             }
-            else if (mc.gameSettings.keyBindAttack.func_197984_a(eventButton))
+            else if (eventButtonState && mc.gameSettings.keyBindAttack.func_197984_a(eventButton))
             {
                 return this.handleAttackKey(mc);
             }
         }
+
         return false;
     }
 
     @Override
-    public boolean onMouseScroll(int mouseX, int mouseY, double scrollAmount)
+    public boolean onMouseScroll(int mouseX, int mouseY, double dWheel)
     {
         Minecraft mc = Minecraft.getInstance();
 
         // Not in a GUI
-        if (mc.currentScreen == null && mc.world != null && mc.player != null)
+        if (GuiUtils.getCurrentScreen() == null && mc.world != null && mc.player != null)
         {
-            EntityPlayer player = mc.player;
-            boolean toolEnabled = Configs.Visuals.ENABLE_RENDERING.getBooleanValue() && Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue();
+            return this.handleMouseScroll(dWheel, mc);
+        }
 
-            if (toolEnabled == false || EntityUtils.hasToolItem(player) == false)
+        return false;
+    }
+
+    private boolean handleMouseScroll(double dWheel, Minecraft mc)
+    {
+        EntityPlayer player = mc.player;
+        boolean toolEnabled = Configs.Visuals.ENABLE_RENDERING.getBooleanValue() && Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue();
+
+        if (toolEnabled == false || EntityUtils.hasToolItem(player) == false)
+        {
+            return false;
+        }
+
+        final int amount = dWheel > 0 ? 1 : -1;
+        ToolMode mode = DataManager.getToolMode();
+
+        if (Hotkeys.SELECTION_GRAB_MODIFIER.getKeybind().isKeybindHeld())
+        {
+            if (mode.getUsesAreaSelection())
             {
-                return false;
-            }
+                SelectionManager sm = DataManager.getSelectionManager();
 
-            int dWheel = (int) scrollAmount;
-            ToolMode mode = DataManager.getToolMode();
-
-            if (dWheel != 0)
-            {
-                final int amount = dWheel > 0 ? 1 : -1;
-
-                if (Hotkeys.SELECTION_GRAB_MODIFIER.getKeybind().isKeybindHeld())
+                if (sm.hasGrabbedElement())
                 {
-                    if (mode.getUsesAreaSelection())
-                    {
-                        SelectionManager sm = DataManager.getSelectionManager();
-
-                        if (sm.hasGrabbedElement())
-                        {
-                            sm.changeGrabDistance(player, amount);
-                            return true;
-                        }
-                        else if (sm.hasSelectedOrigin())
-                        {
-                            AreaSelection area = sm.getCurrentSelection();
-                            BlockPos old = area.getEffectiveOrigin();
-                            area.moveEntireSelectionTo(old.offset(EntityUtils.getClosestLookingDirection(player), amount), false);
-                            return true;
-                        }
-                    }
-                }
-
-                if (Hotkeys.SELECTION_GROW_MODIFIER.getKeybind().isKeybindHeld())
-                {
-                    return this.growOrShrinkSelection(amount, mode);
-                }
-
-                if (Hotkeys.SELECTION_NUDGE_MODIFIER.getKeybind().isKeybindHeld())
-                {
-                    return nudgeSelection(amount, mode, player);
-                }
-
-                if (Hotkeys.OPERATION_MODE_CHANGE_MODIFIER.getKeybind().isKeybindHeld())
-                {
-                    DataManager.setToolMode(DataManager.getToolMode().cycle(player, amount < 0));
+                    sm.changeGrabDistance(player, amount);
                     return true;
                 }
-
-                if (Hotkeys.SCHEMATIC_VERSION_CYCLE_MODIFIER.getKeybind().isKeybindHeld())
+                else if (sm.hasSelectedOrigin())
                 {
-                    if (DataManager.getSchematicProjectsManager().hasProjectOpen())
-                    {
-                        DataManager.getSchematicProjectsManager().cycleVersion(amount * -1);
-                    }
+                    AreaSelection area = sm.getCurrentSelection();
+                    BlockPos old = area.getEffectiveOrigin();
+                    area.moveEntireSelectionTo(old.offset(EntityUtils.getClosestLookingDirection(player), amount), false);
+                    return true;
+                }
+                else if (mode == ToolMode.MOVE)
+                {
+                    SchematicUtils.moveCurrentlySelectedWorldRegionToLookingDirection(amount, player, mc);
                     return true;
                 }
             }
+        }
+
+        if (Hotkeys.SELECTION_GROW_MODIFIER.getKeybind().isKeybindHeld())
+        {
+            return this.growOrShrinkSelection(amount, mode);
+        }
+
+        if (Hotkeys.SELECTION_NUDGE_MODIFIER.getKeybind().isKeybindHeld())
+        {
+            return nudgeSelection(amount, mode, player);
+        }
+
+        if (Hotkeys.OPERATION_MODE_CHANGE_MODIFIER.getKeybind().isKeybindHeld())
+        {
+            DataManager.setToolMode(DataManager.getToolMode().cycle(player, amount < 0));
+            return true;
+        }
+
+        if (Hotkeys.SCHEMATIC_VERSION_CYCLE_MODIFIER.getKeybind().isKeybindHeld())
+        {
+            if (DataManager.getSchematicProjectsManager().hasProjectOpen())
+            {
+                DataManager.getSchematicProjectsManager().cycleVersion(amount * -1);
+            }
+            return true;
         }
 
         return false;
@@ -282,9 +290,7 @@ public class InputHandler implements IKeybindProvider, IKeyboardInputHandler, IM
             }
             else if (Configs.Generic.PICK_BLOCK_ENABLED.getBooleanValue())
             {
-                int keyCodeUse = ((IMixinKeyBinding) mc.gameSettings.keyBindUseItem).getInput().getKeyCode();
-
-                if (Hotkeys.PICK_BLOCK_LAST.getKeybind().matches(keyCodeUse))
+                if (KeybindMulti.hotkeyMatchesKeybind(Hotkeys.PICK_BLOCK_LAST, mc.gameSettings.keyBindUseItem))
                 {
                     WorldUtils.doSchematicWorldPickBlock(false, mc);
                 }

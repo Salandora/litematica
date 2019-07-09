@@ -30,6 +30,7 @@ import fi.dy.masa.malilib.gui.interfaces.IMessageConsumer;
 import fi.dy.masa.malilib.interfaces.IStringConsumer;
 import fi.dy.masa.malilib.util.Color4f;
 import fi.dy.masa.malilib.util.InfoUtils;
+import fi.dy.masa.malilib.util.IntBoundingBox;
 import fi.dy.masa.malilib.util.JsonUtils;
 import fi.dy.masa.malilib.util.PositionUtils.CoordinateType;
 import net.minecraft.init.Blocks;
@@ -37,7 +38,6 @@ import net.minecraft.util.Mirror;
 import net.minecraft.util.Rotation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MutableBoundingBox;
 import net.minecraft.world.gen.feature.template.PlacementSettings;
 
 public class SchematicPlacement
@@ -109,7 +109,19 @@ public class SchematicPlacement
         // regardless of where the defined origin point is in relation to the minimum corner.
         Pair<BlockPos, BlockPos> pair = PositionUtils.getEnclosingAreaCorners(schematic.getAreas().values());
         BlockPos originAdjusted = pair != null ? origin.subtract(pair.getLeft()) : origin;
-        SchematicPlacement placement = new SchematicPlacement(schematic, originAdjusted, "?", true, true);
+
+        return createTemporary(schematic, originAdjusted);
+    }
+
+    /**
+     * Creates a temporary placement which doesn't affect the SchematicPlacementManager
+     * @param schematic
+     * @param origin
+     * @return
+     */
+    public static SchematicPlacement createTemporary(LitematicaSchematic schematic, BlockPos origin)
+    {
+        SchematicPlacement placement = new SchematicPlacement(schematic, origin, "?", true, true);
         placement.resetAllSubRegionsToSchematicValues(InfoUtils.INFO_MESSAGE_CONSUMER, false);
 
         return placement;
@@ -512,14 +524,14 @@ public class SchematicPlacement
         return set;
     }
 
-    public ImmutableMap<String, MutableBoundingBox> getBoxesWithinChunk(int chunkX, int chunkZ)
+    public ImmutableMap<String, IntBoundingBox> getBoxesWithinChunk(int chunkX, int chunkZ)
     {
         ImmutableMap<String, Box> subRegions = this.getSubRegionBoxes(RequiredEnabled.PLACEMENT_ENABLED);
         return PositionUtils.getBoxesWithinChunk(chunkX, chunkZ, subRegions);
     }
 
     @Nullable
-    public MutableBoundingBox getBoxWithinChunkForRegion(String regionName, int chunkX, int chunkZ)
+    public IntBoundingBox getBoxWithinChunkForRegion(String regionName, int chunkX, int chunkZ)
     {
         Box box = this.getSubRegionBoxFor(regionName, RequiredEnabled.PLACEMENT_ENABLED).get(regionName);
         return box != null ? PositionUtils.getBoundsWithinChunkForBox(box, chunkX, chunkZ) : null;
