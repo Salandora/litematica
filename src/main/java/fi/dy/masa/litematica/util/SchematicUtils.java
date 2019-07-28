@@ -14,6 +14,7 @@ import fi.dy.masa.litematica.scheduler.tasks.TaskPasteSchematicDirect;
 import fi.dy.masa.litematica.scheduler.tasks.TaskPasteSchematicSetblock;
 import fi.dy.masa.litematica.scheduler.tasks.TaskSaveSchematic;
 import fi.dy.masa.litematica.schematic.LitematicaSchematic;
+import fi.dy.masa.litematica.schematic.SchematicMetadata;
 import fi.dy.masa.litematica.schematic.container.LitematicaBlockStateContainer;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacementManager;
@@ -118,14 +119,16 @@ public class SchematicUtils
         if (info != null && info.stateNew != null)
         {
             BlockPos pos = info.pos.offset(info.side);
+            WorldSchematic world = SchematicWorldHandler.getSchematicWorld();
 
-            if (DataManager.getRenderLayerRange().isPositionWithinRange(pos))
+            if (DataManager.getRenderLayerRange().isPositionWithinRange(pos) &&
+                world != null && world.isAirBlock(pos))
             {
                 return setTargetedSchematicBlockState(pos, info.stateNew);
             }
         }
 
-        return false;
+        return true;
     }
 
     public static boolean replaceSchematicBlocksInDirection(Minecraft mc)
@@ -250,19 +253,20 @@ public class SchematicUtils
     {
         ItemStack stack = mc.player.getHeldItemMainhand();
 
-        if (stack.isEmpty() == false && (stack.getItem() instanceof ItemBlock))
+        if ((stack.isEmpty() == false && stack.getItem() instanceof ItemBlock) ||
+            (stack.isEmpty() && ToolMode.REBUILD.getPrimaryBlock() != null))
         {
-            WorldSchematic worldSchematic = SchematicWorldHandler.getSchematicWorld();
+            WorldSchematic world = SchematicWorldHandler.getSchematicWorld();
             RayTraceWrapper traceWrapper = RayTraceUtils.getGenericTrace(mc.world, mc.player, 10, true);
 
-            if (worldSchematic != null && traceWrapper != null &&
+            if (world != null && traceWrapper != null &&
                 traceWrapper.getHitType() == RayTraceWrapper.HitType.SCHEMATIC_BLOCK)
             {
                 RayTraceResult trace = traceWrapper.getRayTraceResult();
                 EnumFacing side = trace.sideHit;
                 Vec3d hitVec = trace.hitVec;
                 BlockPos pos = trace.getBlockPos();
-                IBlockState stateOriginal = worldSchematic.getBlockState(pos);
+                IBlockState stateOriginal = world.getBlockState(pos);
                 IBlockState stateNew = Blocks.AIR.getDefaultState();
 
                 if (stack.getItem() instanceof ItemBlock)
@@ -277,6 +281,10 @@ public class SchematicUtils
                     mc.player.world = worldClient;
 
                     stateNew = ((ItemBlock) stack.getItem()).getBlock().getStateForPlacement(ctx);
+                }
+                else if (ToolMode.REBUILD.getPrimaryBlock() != null)
+                {
+                    stateNew = ToolMode.REBUILD.getPrimaryBlock();
                 }
 
                 return new ReplacementInfo(pos, side, hitVec, stateOriginal, stateNew);
@@ -369,7 +377,12 @@ public class SchematicUtils
                             totalBlocks += increment;
 
                             container.set(posSchematic.getX(), posSchematic.getY(), posSchematic.getZ(), state);
-                            part.getPlacement().getSchematic().getMetadata().setTotalBlocks(totalBlocks);
+
+                            SchematicMetadata metadata = part.getPlacement().getSchematic().getMetadata();
+                            metadata.setTotalBlocks(totalBlocks);
+                            metadata.setTimeModifiedToNow();
+                            metadata.setModifiedSinceSaved();
+
                             DataManager.getSchematicPlacementManager().markChunkForRebuild(new ChunkPos(cpos.getX(), cpos.getZ()));
 
                             return true;
@@ -444,7 +457,11 @@ public class SchematicUtils
                                 }
                             }
 
-                            part.getPlacement().getSchematic().getMetadata().setTotalBlocks(totalBlocks);
+                            SchematicMetadata metadata = part.getPlacement().getSchematic().getMetadata();
+                            metadata.setTotalBlocks(totalBlocks);
+                            metadata.setTimeModifiedToNow();
+                            metadata.setModifiedSinceSaved();
+
                             DataManager.getSchematicPlacementManager().markAllPlacementsOfSchematicForRebuild(placement.getSchematic());
 
                             return true;
@@ -602,7 +619,10 @@ public class SchematicUtils
             }
         }
 
-        schematicPlacement.getSchematic().getMetadata().setTotalBlocks(totalBlocks);
+        SchematicMetadata metadata = part.getPlacement().getSchematic().getMetadata();
+        metadata.setTotalBlocks(totalBlocks);
+        metadata.setTimeModifiedToNow();
+        metadata.setModifiedSinceSaved();
 
         return true;
     }

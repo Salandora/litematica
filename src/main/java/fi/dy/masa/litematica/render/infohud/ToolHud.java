@@ -5,7 +5,6 @@ import java.util.Date;
 import java.util.List;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.materials.MaterialCache;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import fi.dy.masa.litematica.schematic.placement.SubRegionPlacement;
 import fi.dy.masa.litematica.schematic.projects.SchematicProject;
@@ -19,9 +18,9 @@ import fi.dy.masa.litematica.tool.ToolModeData;
 import fi.dy.masa.litematica.util.EntityUtils;
 import fi.dy.masa.litematica.util.PositionUtils;
 import fi.dy.masa.litematica.util.ReplaceBehavior;
-import fi.dy.masa.malilib.config.HudAlignment;
 import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.util.BlockUtils;
+import fi.dy.masa.malilib.util.HudAlignment;
 import fi.dy.masa.malilib.util.StringUtils;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.item.ItemStack;
@@ -53,7 +52,8 @@ public class ToolHud extends InfoHud
 
     protected boolean hasEnabledTool()
     {
-        return Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue() && EntityUtils.hasToolItem(this.mc.player);
+        return Configs.InfoOverlays.TOOL_HUD_ALWAYS_VISIBLE.getBooleanValue() ||
+               (Configs.Generic.TOOL_ITEM_ENABLED.getBooleanValue() && EntityUtils.hasToolItem(this.mc.player));
     }
 
     @Override
@@ -253,6 +253,15 @@ public class ToolHud extends InfoHud
 
                 lines.add(StringUtils.translate("litematica.hud.area_selection.origin", green + str + rst));
 
+                IBlockState state = mode.getPrimaryBlock();
+                ItemStack stack = this.mc.player.getHeldItemMainhand();
+
+                if (state != null && mode == ToolMode.REBUILD &&
+                    (stack.isEmpty() || EntityUtils.hasToolItem(this.mc.player)))
+                {
+                    lines.add(StringUtils.translate("litematica.tool_hud.block_1", this.getBlockString(state)));
+                }
+
                 SubRegionPlacement placement = schematicPlacement.getSelectedSubRegionPlacement();
 
                 if (placement != null)
@@ -312,7 +321,6 @@ public class ToolHud extends InfoHud
 
     protected String getBlockString(IBlockState state)
     {
-        ItemStack stack = MaterialCache.getInstance().getItemForState(state);
         String strBlock;
 
         String green = GuiBase.TXT_GREEN;

@@ -346,7 +346,8 @@ public class RayTraceUtils
         Vec3d lookEndPos = eyesPos.add(rangedLookRot);
         RayTraceFluidMode fluidMode = RayTraceFluidMode.ALWAYS;
 
-        return rayTraceBlocks(world, eyesPos, lookEndPos, fluidMode, false, true, respectRenderRange, 200);
+        return rayTraceSchematicWorldBlocks(world, eyesPos, lookEndPos, fluidMode, false, true, respectRenderRange, 200);
+        //return rayTraceBlocks(world, eyesPos, lookEndPos, fluidMode, false, true, respectRenderRange, 200);
     }
 
     @Nullable
@@ -575,10 +576,17 @@ public class RayTraceUtils
 
         while (--maxSteps >= 0)
         {
-            if (rayTraceCalcs(data, returnLastUncollidableBlock, respectLayerRange))
+            if (Double.isNaN(data.posStart.x) || Double.isNaN(data.posStart.y) || Double.isNaN(data.posStart.z))
             {
-                return data.trace;
+                return null;
             }
+
+            if (data.x == xEnd && data.y == yEnd && data.z == zEnd)
+            {
+                return returnLastUncollidableBlock ? data.trace : null;
+            }
+
+            rayTraceCalcs(data, returnLastUncollidableBlock, respectLayerRange);
 
             blockState = world.getBlockState(data.blockPos);
             fluidState = world.getFluidState(data.blockPos);
@@ -673,7 +681,7 @@ public class RayTraceUtils
         return false;
     }
 
-    public static List<RayTraceResult> rayTraceBlocksToList(World world, Vec3d start, Vec3d end,
+    public static List<RayTraceResult> rayTraceSchematicWorldBlocksToList(World world, Vec3d start, Vec3d end,
             RayTraceFluidMode fluidMode, boolean ignoreBlockWithoutBoundingBox,
             boolean returnLastUncollidableBlock, boolean respectLayerRange, int maxSteps)
     {
@@ -721,7 +729,7 @@ public class RayTraceUtils
         return hits;
     }
 
-    private static boolean rayTraceCalcs(RayTraceCalcsData data, boolean returnLastNonCollidableBlock, boolean respectLayerRange)
+    private static void rayTraceCalcs(RayTraceCalcsData data)
     {
         boolean xDiffers = true;
         boolean yDiffers = true;
@@ -733,7 +741,7 @@ public class RayTraceUtils
         if (Double.isNaN(data.currentX) || Double.isNaN(data.currentY) || Double.isNaN(data.currentZ))
         {
             data.trace = null;
-            return true;
+            return;
         }
 
         if (data.x == data.xEnd && data.y == data.yEnd && data.z == data.zEnd)
@@ -743,7 +751,7 @@ public class RayTraceUtils
                 data.trace = null;
             }
 
-            return true;
+            return;
         }
 
         if (data.xEnd > data.x)
@@ -848,8 +856,6 @@ public class RayTraceUtils
         data.y = MathHelper.floor(data.currentY) - (data.facing == EnumFacing.UP ?    1 : 0);
         data.z = MathHelper.floor(data.currentZ) - (data.facing == EnumFacing.SOUTH ? 1 : 0);
         data.blockPos = new BlockPos(data.x, data.y, data.z);
-
-        return false;
     }
 
     public static class RayTraceCalcsData

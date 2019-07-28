@@ -12,7 +12,7 @@ import com.google.gson.JsonPrimitive;
 import fi.dy.masa.litematica.Litematica;
 import fi.dy.masa.litematica.Reference;
 import fi.dy.masa.litematica.config.Configs;
-import fi.dy.masa.litematica.gui.GuiConfigs.ConfigGuiTab;
+import fi.dy.masa.litematica.gui.GuiConfigs;
 import fi.dy.masa.litematica.materials.MaterialCache;
 import fi.dy.masa.litematica.materials.MaterialListBase;
 import fi.dy.masa.litematica.materials.MaterialListHudRenderer;
@@ -26,6 +26,7 @@ import fi.dy.masa.litematica.selection.SelectionManager;
 import fi.dy.masa.litematica.tool.ToolMode;
 import fi.dy.masa.litematica.tool.ToolModeData;
 import fi.dy.masa.litematica.util.SchematicWorldRefresher;
+import fi.dy.masa.malilib.gui.interfaces.IConfigGuiTab;
 import fi.dy.masa.malilib.gui.interfaces.IDirectoryCache;
 import fi.dy.masa.malilib.util.FileUtils;
 import fi.dy.masa.malilib.util.JsonUtils;
@@ -36,6 +37,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.JsonToNBT;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.registry.IRegistry;
 
@@ -47,7 +50,7 @@ public class DataManager implements IDirectoryCache
     private static final Map<String, File> LAST_DIRECTORIES = new HashMap<>();
 
     private static ItemStack toolItem = new ItemStack(Items.STICK);
-    private static ConfigGuiTab configGuiTab = ConfigGuiTab.GENERIC;
+    private static IConfigGuiTab configGuiTab = GuiConfigs.VISUALS;
     private static boolean createPlacementOnLoad = true;
     private static boolean canSave;
     private static long clientTickStart;
@@ -100,12 +103,12 @@ public class DataManager implements IDirectoryCache
         createPlacementOnLoad = create;
     }
 
-    public static ConfigGuiTab getConfigGuiTab()
+    public static IConfigGuiTab getConfigGuiTab()
     {
         return configGuiTab;
     }
 
-    public static void setConfigGuiTab(ConfigGuiTab tab)
+    public static void setConfigGuiTab(IConfigGuiTab tab)
     {
         configGuiTab = tab;
     }
@@ -218,15 +221,16 @@ public class DataManager implements IDirectoryCache
 
             if (JsonUtils.hasString(root, "config_gui_tab"))
             {
-                try
-                {
-                    configGuiTab = ConfigGuiTab.valueOf(root.get("config_gui_tab").getAsString());
-                }
-                catch (Exception e) {}
+                configGuiTab = GuiConfigs.VISUALS;
+                String tabName = root.get("config_gui_tab").getAsString();
 
-                if (configGuiTab == null)
+                for (IConfigGuiTab tab : GuiConfigs.TABS)
                 {
-                    configGuiTab = ConfigGuiTab.GENERIC;
+                    if (tabName.equalsIgnoreCase(tab.getName()))
+                    {
+                        configGuiTab = tab;
+                        break;
+                    }
                 }
             }
 
@@ -262,7 +266,7 @@ public class DataManager implements IDirectoryCache
         root.add("last_directories", objDirs);
 
         root.add("create_placement_on_load", new JsonPrimitive(createPlacementOnLoad));
-        root.add("config_gui_tab", new JsonPrimitive(configGuiTab.name()));
+        root.add("config_gui_tab", new JsonPrimitive(configGuiTab.getName()));
 
         File file = getCurrentStorageFile(true);
         JsonUtils.writeJsonToFile(root, file);
@@ -459,9 +463,9 @@ public class DataManager implements IDirectoryCache
         return Reference.MOD_ID + "_default.json";
     }
 
-    public static void setToolItem(String itemName)
+    public static void setToolItem(String itemNameIn)
     {
-        if (itemName.isEmpty() || itemName.equals("empty"))
+        if (itemNameIn.isEmpty() || itemNameIn.equals("empty"))
         {
             toolItem = ItemStack.EMPTY;
             return;
@@ -469,7 +473,7 @@ public class DataManager implements IDirectoryCache
 
         try
         {
-            Matcher matcher = PATTERN_ITEM_BASE.matcher(itemName);
+            Matcher matcher = PATTERN_ITEM_BASE.matcher(itemNameIn);
 
             if (matcher.matches())
             {
@@ -488,6 +492,7 @@ public class DataManager implements IDirectoryCache
 
         // Fall back to a stick
         toolItem = new ItemStack(Items.STICK);
+
         Configs.Generic.TOOL_ITEM.setValueFromString(IRegistry.ITEM.getKey(Items.STICK).toString());
     }
 }

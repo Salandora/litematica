@@ -1,18 +1,15 @@
 package fi.dy.masa.litematica.config;
 
-import java.io.File;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import com.google.common.collect.ImmutableList;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import fi.dy.masa.litematica.Reference;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.selection.CornerSelectionMode;
 import fi.dy.masa.litematica.util.BlockInfoAlignment;
 import fi.dy.masa.litematica.util.InventoryUtils;
 import fi.dy.masa.litematica.util.ReplaceBehavior;
-import fi.dy.masa.malilib.config.ConfigUtils;
-import fi.dy.masa.malilib.config.HudAlignment;
-import fi.dy.masa.malilib.config.IConfigBase;
 import fi.dy.masa.malilib.config.IConfigHandler;
 import fi.dy.masa.malilib.config.options.ConfigBoolean;
 import fi.dy.masa.malilib.config.options.ConfigColor;
@@ -20,13 +17,12 @@ import fi.dy.masa.malilib.config.options.ConfigDouble;
 import fi.dy.masa.malilib.config.options.ConfigInteger;
 import fi.dy.masa.malilib.config.options.ConfigOptionList;
 import fi.dy.masa.malilib.config.options.ConfigString;
-import fi.dy.masa.malilib.util.FileUtils;
-import fi.dy.masa.malilib.util.JsonUtils;
+import fi.dy.masa.malilib.config.options.IConfigBase;
+import fi.dy.masa.malilib.util.HudAlignment;
+import fi.dy.masa.malilib.util.InfoType;
 
 public class Configs implements IConfigHandler
 {
-    private static final String CONFIG_FILE_NAME = Reference.MOD_ID + ".json";
-
     public static class Generic
     {
         public static final ConfigBoolean       AREAS_PER_WORLD         = new ConfigBoolean(    "areaSelectionsPerWorld", true, "Use per-world or server root directories for the area selections\n�6NOTE: Don't switch this OFF while you are live streaming,\n�6as then the Area Selection browser will show the server IP\n�6in the navigation widget and also in the current selection name/path\n�6until you change the current directory and selection again");
@@ -36,6 +32,7 @@ public class Configs implements IConfigHandler
         public static final ConfigBoolean       EASY_PLACE_HOLD_ENABLED = new ConfigBoolean(    "easyPlaceHoldEnabled", false, "When enabled, then simply holding down the use key\nand looking at different schematic blocks will place them");
         public static final ConfigBoolean       EXECUTE_REQUIRE_TOOL    = new ConfigBoolean(    "executeRequireHoldingTool", true, "Require holding an enabled tool item\nfor the executeOperation hotkey to work");
         public static final ConfigBoolean       FIX_RAIL_ROTATION       = new ConfigBoolean(    "fixRailRotation", true, "If true, then a fix is applied for the vanilla bug in rails,\nwhere the 180 degree rotations of straight north-south and\neast-west rails rotate 90 degrees counterclockwise instead >_>");
+        public static final ConfigBoolean       LAYER_MODE_DYNAMIC      = new ConfigBoolean(    "layerModeFollowsPlayer", false, "If true, then the render layer follows the player.\nNote: This currently collapses Layer Range type ranges unfortunately");
         public static final ConfigBoolean       LOAD_ENTIRE_SCHEMATICS  = new ConfigBoolean(    "loadEntireSchematics", false, "If true, then the entire schematic is always loaded at once.\nIf false, then only the part that is within the client's view distance is loaded.");
         public static final ConfigInteger       PASTE_COMMAND_INTERVAL  = new ConfigInteger(    "pasteCommandInterval", 1, 1, 1000, "The interval in game ticks the Paste schematic task runs at,\nin the command-based mode");
         public static final ConfigInteger       PASTE_COMMAND_LIMIT     = new ConfigInteger(    "pasteCommandLimit", 64, 1, 1000000, "Max number of commands sent per game tick,\nwhen using the Paste schematic feature in the\ncommand mode on a server");
@@ -58,6 +55,7 @@ public class Configs implements IConfigHandler
                 EASY_PLACE_HOLD_ENABLED,
                 EXECUTE_REQUIRE_TOOL,
                 FIX_RAIL_ROTATION,
+                LAYER_MODE_DYNAMIC,
                 LOAD_ENTIRE_SCHEMATICS,
                 PICK_BLOCK_ENABLED,
                 PLACEMENT_RESTRICTION,
@@ -155,6 +153,7 @@ public class Configs implements IConfigHandler
         public static final ConfigOptionList    BLOCK_INFO_OVERLAY_ALIGNMENT        = new ConfigOptionList( "blockInfoOverlayAlignment", BlockInfoAlignment.TOP_CENTER, "The alignment of the Block Info Overlay");
         public static final ConfigInteger       BLOCK_INFO_OVERLAY_OFFSET_Y         = new ConfigInteger(    "blockInfoOverlayOffsetY", 6, -2000, 2000, "The y offset of the block info overlay from the selected edge");
         public static final ConfigBoolean       BLOCK_INFO_OVERLAY_ENABLED          = new ConfigBoolean(    "blockInfoOverlayEnabled", true, "Enable Block Info Overlay rendering to show info\nabout the looked-at block or verifier error marker,\nwhile holding the 'renderInfoOverlay' key", "Block Info Overlay Rendering");
+        public static final ConfigOptionList    EASY_PLACE_WARNINGS                 = new ConfigOptionList( "easyPlaceWarnings", InfoType.MESSAGE_OVERLAY, "Whether to show the \"Action prevented by *\"\nwarnings for the Easy Place and Placement Restriction modes");
         public static final ConfigOptionList    INFO_HUD_ALIGNMENT                  = new ConfigOptionList( "infoHudAlignment", HudAlignment.BOTTOM_RIGHT, "The alignment of the \"Info HUD\",\nused for the Material List, Schematic Verifier mismatch positions etc.");
         public static final ConfigInteger       INFO_HUD_MAX_LINES                  = new ConfigInteger(    "infoHudMaxLines", 10, 1, 128, "The maximum number of info lines to show on the HUD at once");
         public static final ConfigInteger       INFO_HUD_OFFSET_X                   = new ConfigInteger(    "infoHudOffsetX", 1, 0, 32000, "The X offset of the Info HUD from the screen edge");
@@ -162,9 +161,11 @@ public class Configs implements IConfigHandler
         public static final ConfigDouble        INFO_HUD_SCALE                      = new ConfigDouble(     "infoHudScale", 1, 0.1, 4, "Scale factor for the generic Info HUD text");
         public static final ConfigInteger       MATERIAL_LIST_HUD_MAX_LINES         = new ConfigInteger(    "materialListHudMaxLines", 10, 1, 128, "The maximum number of items to show on\nthe Material List Info HUD at once");
         public static final ConfigDouble        MATERIAL_LIST_HUD_SCALE             = new ConfigDouble(     "materialListHudScale", 1, 0.1, 4, "Scale factor for the Material List Info HUD");
+        public static final ConfigBoolean       MATERIAL_LIST_HUD_STACKS            = new ConfigBoolean(    "materialListHudStacks", true, "Whether or not the number of stacks should be shown\non the Material List HUD, or only the total count");
         public static final ConfigBoolean       STATUS_INFO_HUD                     = new ConfigBoolean(    "statusInfoHud", false, "Enable a status info HUD renderer,\nwhich renders a few bits of status info, such as\nthe current layer mode and renderers enabled state");
         public static final ConfigBoolean       STATUS_INFO_HUD_AUTO                = new ConfigBoolean(    "statusInfoHudAuto", true, "Allow automatically momentarily enabling the status info HUD \"when needed\",\nfor example when creating a placement and having rendering disabled");
         public static final ConfigOptionList    TOOL_HUD_ALIGNMENT                  = new ConfigOptionList( "toolHudAlignment", HudAlignment.BOTTOM_LEFT, "The alignment of the \"tool HUD\", when holding the configured \"tool\"");
+        public static final ConfigBoolean       TOOL_HUD_ALWAYS_VISIBLE             = new ConfigBoolean(    "toolHudAlwaysVisible", false, "Whether or not the tool HUD should always be rendered,\neven when not holding the tool item");
         public static final ConfigInteger       TOOL_HUD_OFFSET_X                   = new ConfigInteger(    "toolHudOffsetX", 1, 0, 32000, "The X offset of the Info HUD from the screen edge");
         public static final ConfigInteger       TOOL_HUD_OFFSET_Y                   = new ConfigInteger(    "toolHudOffsetY", 1, 0, 32000, "The X offset of the Info HUD from the screen edge");
         public static final ConfigDouble        TOOL_HUD_SCALE                      = new ConfigDouble(     "toolHudScale", 1, 0.1, 4, "Scale factor for the Tool HUD text");
@@ -176,13 +177,16 @@ public class Configs implements IConfigHandler
         public static final ImmutableList<IConfigBase> OPTIONS = ImmutableList.of(
                 BLOCK_INFO_LINES_ENABLED,
                 BLOCK_INFO_OVERLAY_ENABLED,
+                MATERIAL_LIST_HUD_STACKS,
                 STATUS_INFO_HUD,
                 STATUS_INFO_HUD_AUTO,
+                TOOL_HUD_ALWAYS_VISIBLE,
                 VERIFIER_OVERLAY_ENABLED,
                 WARN_DISABLED_RENDERING,
 
                 BLOCK_INFO_LINES_ALIGNMENT,
                 BLOCK_INFO_OVERLAY_ALIGNMENT,
+                EASY_PLACE_WARNINGS,
                 INFO_HUD_ALIGNMENT,
                 TOOL_HUD_ALIGNMENT,
 
@@ -227,57 +231,30 @@ public class Configs implements IConfigHandler
         );
     }
 
-    public static void loadFromFile()
+    @Override
+    public String getConfigFileName()
     {
-        File configFile = new File(FileUtils.getConfigDirectory(), CONFIG_FILE_NAME);
+        return Reference.MOD_ID + ".json";
+    }
 
-        if (configFile.exists() && configFile.isFile() && configFile.canRead())
-        {
-            JsonElement element = JsonUtils.parseJsonFile(configFile);
+    @Override
+    public Map<String, List<? extends IConfigBase>> getConfigsPerCategories()
+    {
+        Map<String, List<? extends IConfigBase>> map = new LinkedHashMap<>();
 
-            if (element != null && element.isJsonObject())
-            {
-                JsonObject root = element.getAsJsonObject();
+        map.put("Generic", Generic.OPTIONS);
+        map.put("InfoOverlays", InfoOverlays.OPTIONS);
+        map.put("Visuals", Visuals.OPTIONS);
+        map.put("Colors", Colors.OPTIONS);
+        map.put("Hotkeys", Hotkeys.HOTKEY_LIST);
 
-                ConfigUtils.readConfigBase(root, "Colors", Colors.OPTIONS);
-                ConfigUtils.readConfigBase(root, "Generic", Generic.OPTIONS);
-                ConfigUtils.readConfigBase(root, "Hotkeys", Hotkeys.HOTKEY_LIST);
-                ConfigUtils.readConfigBase(root, "InfoOverlays", InfoOverlays.OPTIONS);
-                ConfigUtils.readConfigBase(root, "Visuals", Visuals.OPTIONS);
-            }
-        }
+        return map;
+    }
 
+    @Override
+    public void onPostLoad()
+    {
         DataManager.setToolItem(Generic.TOOL_ITEM.getStringValue());
         InventoryUtils.setPickBlockableSlots(Generic.PICK_BLOCKABLE_SLOTS.getStringValue());
-    }
-
-    public static void saveToFile()
-    {
-        File dir = FileUtils.getConfigDirectory();
-
-        if ((dir.exists() && dir.isDirectory()) || dir.mkdirs())
-        {
-            JsonObject root = new JsonObject();
-
-            ConfigUtils.writeConfigBase(root, "Colors", Colors.OPTIONS);
-            ConfigUtils.writeConfigBase(root, "Generic", Generic.OPTIONS);
-            ConfigUtils.writeConfigBase(root, "Hotkeys", Hotkeys.HOTKEY_LIST);
-            ConfigUtils.writeConfigBase(root, "InfoOverlays", InfoOverlays.OPTIONS);
-            ConfigUtils.writeConfigBase(root, "Visuals", Visuals.OPTIONS);
-
-            JsonUtils.writeJsonToFile(root, new File(dir, CONFIG_FILE_NAME));
-        }
-    }
-
-    @Override
-    public void load()
-    {
-        loadFromFile();
-    }
-
-    @Override
-    public void save()
-    {
-        saveToFile();
     }
 }

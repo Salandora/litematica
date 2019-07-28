@@ -5,10 +5,10 @@ import java.util.List;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.render.infohud.IInfoHudRenderer;
 import fi.dy.masa.litematica.render.infohud.RenderPhase;
-import fi.dy.masa.malilib.config.HudAlignment;
 import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.render.RenderUtils;
 import fi.dy.masa.malilib.util.GuiUtils;
+import fi.dy.masa.malilib.util.HudAlignment;
 import fi.dy.masa.malilib.util.StringUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -225,18 +225,19 @@ public class MaterialListHudRenderer implements IInfoHudRenderer
             {
                 return String.format("%d (%.2f %s)", count, boxCount, StringUtils.translate("litematica.gui.label.material_list.abbr.shulker_box"));
             }
-            else if (remainder > 0)
+            else if (Configs.InfoOverlays.MATERIAL_LIST_HUD_STACKS.getBooleanValue())
             {
-                return String.format("%d (%d x %d + %d)", count, stacks, maxStackSize, remainder);
-            }
-            else
-            {
-                return String.format("%d (%d x %d)", count, stacks, maxStackSize);
+                if (remainder > 0)
+                {
+                    return String.format("%d (%d x %d + %d)", count, stacks, maxStackSize, remainder);
+                }
+                else
+                {
+                    return String.format("%d (%d x %d)", count, stacks, maxStackSize);
+                }
             }
         }
-        else
-        {
-            return String.format("%d", count);
-        }
+
+        return String.format("%d", count);
     }
 }
