@@ -273,7 +273,7 @@ public class SchematicUtils
                 {
                     // Smuggle in a reference to the Schematic world to the use context
                     World worldClient = mc.player.world;
-                    mc.player.world = worldSchematic;
+                    mc.player.world = world;
 
                     BlockItemUseContext ctx = new BlockItemUseContext(new ItemUseContext(mc.player, stack,
                             pos.offset(side), side, (float) hitVec.x, (float) hitVec.y, (float) hitVec.z));

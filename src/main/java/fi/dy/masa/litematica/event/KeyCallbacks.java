@@ -683,6 +683,11 @@ public class KeyCallbacks
                         Corner corner = key == Hotkeys.SET_SELECTION_BOX_POSITION_1.getKeybind() ? Corner.CORNER_1 : Corner.CORNER_2;
                         area.setSelectedSubRegionCornerPos(pos, corner);
 
+                        if (Configs.Generic.CHANGE_SELECTED_CORNER.getBooleanValue())
+                        {
+                            area.getSelectedSubRegionBox().setSelectedCorner(corner);
+                        }
+
                         String posStr = String.format("x: %d, y: %d, z: %d", pos.getX(), pos.getY(), pos.getZ());
                         InfoUtils.printActionbarMessage("litematica.message.set_selection_box_point", corner.ordinal(), posStr);
                         return true;

@@ -57,7 +57,7 @@ public class EntityUtils
 
         if (ItemStack.areItemsEqualIgnoreDurability(toolItem, stackHand))
         {
-            return toolItem.hasTagCompound() == false || ItemStack.areItemStackTagsEqual(toolItem, stackHand);
+            return toolItem.hasTag() == false || ItemStack.areItemStackTagsEqual(toolItem, stackHand);
         }
 
         return false;

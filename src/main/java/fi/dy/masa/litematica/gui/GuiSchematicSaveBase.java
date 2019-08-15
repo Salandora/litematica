@@ -168,7 +168,7 @@ public abstract class GuiSchematicSaveBase extends GuiSchematicBrowserBase imple
     @Override
     public boolean onKeyTyped(int keyCode, int scanCode, int modifiers)
     {
-        if (this.textField.isFocused() && keyCode == Keyboard.KEY_RETURN)
+        if (this.textField.isFocused() && keyCode == KeyCodes.KEY_ENTER)
         {
             this.saveSchematic();
             return true;

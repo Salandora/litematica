@@ -60,8 +60,7 @@ public class MaterialCache
         this.tempWorld = new WorldSchematic(null, settings, DimensionType.NETHER, EnumDifficulty.PEACEFUL, Minecraft.getInstance().profiler);
         this.checkPos = new BlockPos(8, 0, 8);
 
-        WorldUtils.loadChunksClientWorld(this.tempWorld, this.checkPos, new Vec3i(1, 1, 1));
-        //WorldUtils.loadChunksSchematicWorld(this.tempWorld, this.checkPos, new Vec3i(1, 1, 1));
+        WorldUtils.loadChunksSchematicWorld(this.tempWorld, this.checkPos, new Vec3i(1, 1, 1));
     }
 
     public static MaterialCache getInstance()
@@ -249,8 +248,8 @@ public class MaterialCache
     {
         NBTTagCompound nbt = new NBTTagCompound();
 
-        nbt.setTag("MaterialCache", this.writeMapToNBT(this.buildItemsForStates));
-        nbt.setTag("DisplayMaterialCache", this.writeMapToNBT(this.displayItemsForStates));
+        nbt.put("MaterialCache", this.writeMapToNBT(this.buildItemsForStates));
+        nbt.put("DisplayMaterialCache", this.writeMapToNBT(this.displayItemsForStates));
 
         return nbt;
     }
@@ -284,10 +283,10 @@ public class MaterialCache
 
     protected void readMapFromNBT(NBTTagCompound nbt, String tagName, IdentityHashMap<IBlockState, ItemStack> map)
     {
-        if (nbt.hasKey(tagName, Constants.NBT.TAG_LIST))
+        if (nbt.contains(tagName, Constants.NBT.TAG_LIST))
         {
-            NBTTagList list = nbt.getTagList(tagName, Constants.NBT.TAG_COMPOUND);
-            final int count = list.tagCount();
+            NBTTagList list = nbt.getList(tagName, Constants.NBT.TAG_COMPOUND);
+            final int count = list.size();
 
             for (int i = 0; i < count; ++i)
             {

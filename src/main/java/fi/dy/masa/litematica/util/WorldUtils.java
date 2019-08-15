@@ -356,7 +356,7 @@ public class WorldUtils
                 }
                 else if (wrapper.getHitType() == HitType.VANILLA)
                 {
-                    state = mc.world.getBlockState(pos).getActualState(mc.world, pos);
+                    state = mc.world.getBlockState(pos);
                 }
             }
         }
@@ -550,11 +550,11 @@ public class WorldUtils
                 cacheEasyPlacePosition(pos);
 
                 // Fluid _blocks_ are not replaceable... >_>
-                if (stateClient.getBlock().isReplaceable(mc.world, pos) == false &&
+                /*if (stateClient.getBlock().isReplaceable(mc.world, pos) == false &&
                         stateClient.getMaterial().isLiquid())
                 {
                     pos = pos.offset(side, -1);
-                }
+                }*/
 
                 //System.out.printf("pos: %s side: %s, hit: %s\n", pos, side, hitPos);
                 mc.playerController.processRightClickBlock(mc.player, mc.world, pos, side, hitPos, hand);
@@ -721,9 +721,9 @@ public class WorldUtils
     {
         RayTraceResult trace = mc.objectMouseOver;
 
-/*        ItemStack stack = mc.player.getHeldItemMainhand();
+        ItemStack stack = mc.player.getHeldItemMainhand();
 
-        if (stack.isEmpty())
+        /*if (stack.isEmpty())
         {
             stack = mc.player.getHeldItemOffhand();
         }
@@ -744,7 +744,7 @@ public class WorldUtils
 
             IBlockState stateClient = mc.world.getBlockState(pos);
 
-            if (stateClient.getBlock().isReplaceable(mc.world, pos) == false)
+            /*if (stateClient.getBlock().isReplaceable(mc.world, pos) == false)
             {
                 pos = pos.offset(trace.sideHit);
                 stateClient = mc.world.getBlockState(pos);
@@ -755,7 +755,7 @@ public class WorldUtils
                 stateClient.getMaterial().isLiquid() == false)
             {
                 return true;
-            }
+            }*/
 
             World worldSchematic = SchematicWorldHandler.getSchematicWorld();
             LayerRange range = DataManager.getRenderLayerRange();
@@ -783,7 +783,7 @@ public class WorldUtils
             }
 
             IBlockState stateSchematic = worldSchematic.getBlockState(pos);
-            ItemStack stack = MaterialCache.getInstance().getRequiredBuildItemForState(stateSchematic);
+            stack = MaterialCache.getInstance().getRequiredBuildItemForState(stateSchematic);
 
             // The player is holding the wrong item for the targeted position
             if (stack.isEmpty() == false && EntityUtils.getUsedHandForItem(mc.player, stack) == null)
