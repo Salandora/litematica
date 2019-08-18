@@ -18,8 +18,8 @@ import fi.dy.masa.malilib.config.options.ConfigInteger;
 import fi.dy.masa.malilib.config.options.ConfigOptionList;
 import fi.dy.masa.malilib.config.options.ConfigString;
 import fi.dy.masa.malilib.config.options.IConfigBase;
-import fi.dy.masa.malilib.util.HudAlignment;
-import fi.dy.masa.malilib.util.InfoType;
+import fi.dy.masa.malilib.config.values.HudAlignment;
+import fi.dy.masa.malilib.config.values.InfoType;
 
 public class Configs implements IConfigHandler
 {
@@ -229,6 +229,12 @@ public class Configs implements IConfigHandler
                 SCHEMATIC_OVERLAY_COLOR_WRONG_BLOCK,
                 SCHEMATIC_OVERLAY_COLOR_WRONG_STATE
         );
+    }
+
+    @Override
+    public String getModName()
+    {
+        return Reference.MOD_NAME;
     }
 
     @Override
