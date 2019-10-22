@@ -120,8 +120,7 @@ public class SchematicPlacementManager
                 }
 
                 if (Configs.Generic.LOAD_ENTIRE_SCHEMATICS.getBooleanValue() ||
-                    //worldClient.getChunkProvider().getChunk(pos.x, pos.z, false, false) != null)
-                    worldClient.getChunkProvider().isChunkLoaded(pos.x, pos.z))
+                    worldClient.getChunkProvider().getChunk(pos.x, pos.z, false, false) != null)
                 {
                     // Wipe the old chunk if it exists
                     this.unloadSchematicChunk(worldSchematic, pos.x, pos.z);

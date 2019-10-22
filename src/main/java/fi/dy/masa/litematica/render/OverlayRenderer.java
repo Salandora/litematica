@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
+
+import net.minecraft.util.registry.IRegistry;
 import org.lwjgl.opengl.GL11;
 import com.google.common.collect.ImmutableMap;
 import net.minecraft.block.Block;
