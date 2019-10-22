@@ -14,6 +14,15 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import fi.dy.masa.litematica.config.Configs;
 import fi.dy.masa.litematica.config.Hotkeys;
 import fi.dy.masa.litematica.data.DataManager;
@@ -37,17 +46,10 @@ import fi.dy.masa.malilib.gui.Message.MessageType;
 import fi.dy.masa.malilib.util.InfoUtils;
 import fi.dy.masa.malilib.util.IntBoundingBox;
 import fi.dy.masa.malilib.util.JsonUtils;
+import fi.dy.masa.malilib.util.LayerRange;
 import fi.dy.masa.malilib.util.StringUtils;
 import fi.dy.masa.malilib.util.SubChunkPos;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
+import fi.dy.masa.malilib.util.WorldUtils;
 
 public class SchematicPlacementManager
 {
@@ -118,7 +120,8 @@ public class SchematicPlacementManager
                 }
 
                 if (Configs.Generic.LOAD_ENTIRE_SCHEMATICS.getBooleanValue() ||
-                    worldClient.getChunkProvider().getChunk(pos.x, pos.z, false, false) != null)
+                    //worldClient.getChunkProvider().getChunk(pos.x, pos.z, false, false) != null)
+                    worldClient.getChunkProvider().isChunkLoaded(pos.x, pos.z))
                 {
                     // Wipe the old chunk if it exists
                     this.unloadSchematicChunk(worldSchematic, pos.x, pos.z);
@@ -180,7 +183,7 @@ public class SchematicPlacementManager
         if (worldSchematic.getChunkProvider().isChunkLoaded(chunkX, chunkZ))
         {
             //System.out.printf("unloading chunk at %d, %d\n", chunkX, chunkZ);
-            worldSchematic.markBlockRangeForRenderUpdate((chunkX << 4), 0, (chunkZ << 4), (chunkX << 4) + 15, 255, (chunkZ << 4) + 15);
+            worldSchematic.markBlockRangeForRenderUpdate((chunkX << 4) - 1, 0, (chunkZ << 4) - 1, (chunkX << 4) + 16, 256, (chunkZ << 4) + 16);
             worldSchematic.getChunkProvider().unloadChunk(chunkX, chunkZ);
         }
     }
@@ -311,6 +314,23 @@ public class SchematicPlacementManager
         }
 
         return ret;
+    }
+
+    public List<SchematicPlacement> getAllPlacementsOfSchematic(LitematicaSchematic schematic)
+    {
+        List<SchematicPlacement> list = new ArrayList<>();
+
+        for (int i = 0; i < this.schematicPlacements.size(); ++i)
+        {
+            SchematicPlacement placement = this.schematicPlacements.get(i);
+
+            if (placement.getSchematic() == schematic)
+            {
+                list.add(placement);
+            }
+        }
+
+        return list;
     }
 
     public void removeAllPlacementsOfSchematic(LitematicaSchematic schematic)
@@ -680,10 +700,11 @@ public class SchematicPlacementManager
                 {
                     final WorldServer world = mc.getIntegratedServer().getWorld(mc.player.getEntityWorld().dimension.getType());
                     final LitematicaSchematic schematic = schematicPlacement.getSchematic();
+                    final LayerRange range = DataManager.getRenderLayerRange().copy();
 
                     world.addScheduledTask(() ->
                     {
-                        if (schematic.placeToWorld(world, schematicPlacement, false))
+                        if (schematic.placeToWorld(world, schematicPlacement, range, false))
                         {
                             if (printMessage)
                             {
@@ -703,7 +724,8 @@ public class SchematicPlacementManager
                 }
                 else
                 {
-                    TaskPasteSchematicSetblock task = new TaskPasteSchematicSetblock(schematicPlacement, changedBlocksOnly);
+                    final LayerRange range = DataManager.getRenderLayerRange().copy();
+                    TaskPasteSchematicSetblock task = new TaskPasteSchematicSetblock(schematicPlacement, range, changedBlocksOnly);
                     TaskScheduler.getInstanceClient().scheduleTask(task, Configs.Generic.PASTE_COMMAND_INTERVAL.getIntegerValue());
 
                     if (printMessage)

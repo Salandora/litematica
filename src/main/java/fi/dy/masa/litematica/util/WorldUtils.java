@@ -8,34 +8,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
-import com.mojang.datafixers.DataFixer;
-import fi.dy.masa.litematica.config.Configs;
-import fi.dy.masa.litematica.config.Hotkeys;
-import fi.dy.masa.litematica.data.DataManager;
-import fi.dy.masa.litematica.materials.MaterialCache;
-import fi.dy.masa.litematica.schematic.LitematicaSchematic;
-import fi.dy.masa.litematica.schematic.SchematicaSchematic;
-import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
-import fi.dy.masa.litematica.schematic.placement.SchematicPlacementManager;
-import fi.dy.masa.litematica.selection.AreaSelection;
-import fi.dy.masa.litematica.selection.Box;
-import fi.dy.masa.litematica.tool.ToolMode;
-import fi.dy.masa.litematica.util.PositionUtils.Corner;
-import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
-import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper.HitType;
-import fi.dy.masa.litematica.world.SchematicWorldHandler;
-import fi.dy.masa.litematica.world.WorldSchematic;
-import fi.dy.masa.malilib.config.values.InfoType;
-import fi.dy.masa.malilib.gui.GuiBase;
-import fi.dy.masa.malilib.gui.Message.MessageType;
-import fi.dy.masa.malilib.hotkeys.KeybindMulti;
-import fi.dy.masa.malilib.interfaces.IStringConsumer;
-import fi.dy.masa.malilib.util.FileUtils;
-import fi.dy.masa.malilib.util.InfoUtils;
-import fi.dy.masa.malilib.util.IntBoundingBox;
-import fi.dy.masa.malilib.util.LayerRange;
-import fi.dy.masa.malilib.util.StringUtils;
-import fi.dy.masa.malilib.util.SubChunkPos;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRedstoneComparator;
 import net.minecraft.block.BlockRedstoneRepeater;
@@ -72,6 +44,33 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.gen.feature.template.PlacementSettings;
 import net.minecraft.world.gen.feature.template.Template;
+import fi.dy.masa.litematica.config.Configs;
+import fi.dy.masa.litematica.config.Hotkeys;
+import fi.dy.masa.litematica.data.DataManager;
+import fi.dy.masa.litematica.materials.MaterialCache;
+import fi.dy.masa.litematica.schematic.LitematicaSchematic;
+import fi.dy.masa.litematica.schematic.SchematicaSchematic;
+import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
+import fi.dy.masa.litematica.schematic.placement.SchematicPlacementManager;
+import fi.dy.masa.litematica.selection.AreaSelection;
+import fi.dy.masa.litematica.selection.Box;
+import fi.dy.masa.litematica.tool.ToolMode;
+import fi.dy.masa.litematica.util.PositionUtils.Corner;
+import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper;
+import fi.dy.masa.litematica.util.RayTraceUtils.RayTraceWrapper.HitType;
+import fi.dy.masa.litematica.world.SchematicWorldHandler;
+import fi.dy.masa.litematica.world.WorldSchematic;
+import fi.dy.masa.malilib.config.values.InfoType;
+import fi.dy.masa.malilib.gui.GuiBase;
+import fi.dy.masa.malilib.gui.Message.MessageType;
+import fi.dy.masa.malilib.hotkeys.KeybindMulti;
+import fi.dy.masa.malilib.interfaces.IStringConsumer;
+import fi.dy.masa.malilib.util.FileUtils;
+import fi.dy.masa.malilib.util.InfoUtils;
+import fi.dy.masa.malilib.util.IntBoundingBox;
+import fi.dy.masa.malilib.util.LayerRange;
+import fi.dy.masa.malilib.util.StringUtils;
+import fi.dy.masa.malilib.util.SubChunkPos;
 
 public class WorldUtils
 {
@@ -222,7 +221,8 @@ public class WorldUtils
         BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
         loadChunksSchematicWorld(world, BlockPos.ORIGIN, size);
         SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
-        litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
+        LayerRange range = new LayerRange(SchematicWorldRefresher.INSTANCE); // This is by default in the All layers mode
+        litematicaSchematic.placeToWorld(world, schematicPlacement, range, false); // TODO use a per-chunk version for a bit more speed
 
         SchematicaSchematic schematic = SchematicaSchematic.createFromWorld(world, BlockPos.ORIGIN, size, ignoreEntities);
 
@@ -258,7 +258,8 @@ public class WorldUtils
         BlockPos size = new BlockPos(litematicaSchematic.getTotalSize());
         loadChunksSchematicWorld(world, BlockPos.ORIGIN, size);
         SchematicPlacement schematicPlacement = SchematicPlacement.createForSchematicConversion(litematicaSchematic, BlockPos.ORIGIN);
-        litematicaSchematic.placeToWorld(world, schematicPlacement, false); // TODO use a per-chunk version for a bit more speed
+        LayerRange range = new LayerRange(SchematicWorldRefresher.INSTANCE); // This is by default in the All layers mode
+        litematicaSchematic.placeToWorld(world, schematicPlacement, range, false); // TODO use a per-chunk version for a bit more speed
 
         Template template = new Template();
         template.takeBlocksFromWorld(world, BlockPos.ORIGIN, size, ignoreEntities == false, Blocks.STRUCTURE_VOID);
@@ -395,10 +396,12 @@ public class WorldUtils
             World world = SchematicWorldHandler.getSchematicWorld();
             IBlockState state = world.getBlockState(pos);
             ItemStack stack = MaterialCache.getInstance().getRequiredBuildItemForState(state, world, pos);
+            boolean ignoreNBT = Configs.Generic.PICK_BLOCK_IGNORE_NBT.getBooleanValue();
 
             if (stack.isEmpty() == false)
             {
                 InventoryPlayer inv = mc.player.inventory;
+                int slotNum = InventoryUtils.findSlotWithItem(inv, stack, false, ignoreNBT);
 
                 if (mc.player.abilities.isCreativeMode)
                 {
@@ -412,23 +415,12 @@ public class WorldUtils
                         ItemUtils.storeTEInStack(stack, te);
                     }
 
-                    InventoryUtils.setPickedItemToHand(stack, mc);
+                    InventoryUtils.setPickedItemToHand(slotNum, stack, ignoreNBT, mc);
                     mc.playerController.sendSlotPacket(mc.player.getHeldItem(EnumHand.MAIN_HAND), 36 + inv.currentItem);
-
-                    //return true;
                 }
-                else
+                else if (slotNum != -1 && inv.currentItem != slotNum)
                 {
-                    int slot = inv.getSlotFor(stack);
-                    boolean shouldPick = inv.currentItem != slot;
-                    boolean canPick = slot != -1;
-
-                    if (shouldPick && canPick)
-                    {
-                        InventoryUtils.setPickedItemToHand(stack, mc);
-                    }
-
-                    //return shouldPick == false || canPick;
+                    InventoryUtils.setPickedItemToHand(slotNum, stack, ignoreNBT, mc);
                 }
             }
 
